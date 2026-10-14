@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<title>Uji responsif</title>
+<style>
+  body { margin: 0; font: 12px system-ui; background: #111; color: #eee; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; }
+  .cell { border: 1px solid #444; }
+  .cell b { display: block; padding: 2px 4px; background: #222; }
+  iframe { border: 0; display: block; background: #000; }
+</style>
+</head>
+<body>
+<div class="row" id="row"></div>
+<script>
+  const widths = [320, 375, 768];
+  const hgt = parseInt((location.search.split("h=")[1] || "520"), 10);
+  const path = decodeURIComponent(location.search.slice(1).split("&")[0]).replace(/^\//, "") || "";
+  document.getElementById("row").innerHTML = widths.map(w =>
+    '<div class="cell"><b>' + w + 'px</b><iframe data-w="' + w + '" width="' + w + '" height="' + hgt + '" src="/' + path + '"></iframe></div>'
+  ).join("");
+</script>
+</body>
+</html>

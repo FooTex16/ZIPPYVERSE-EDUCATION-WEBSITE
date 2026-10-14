@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="Pulau masa depan">
+  <defs>
+    <radialGradient id="c" cx="34%" cy="28%" r="82%">
+      <stop offset="0%" stop-color="#B2D8D5"/>
+      <stop offset="100%" stop-color="#0F2C3D"/>
+    </radialGradient>
+  </defs>
+  <circle cx="48" cy="48" r="34" fill="url(#c)"/>
+  <circle cx="35" cy="37" r="6" fill="#0F2C3D" opacity="0.35"/>
+  <circle cx="60" cy="56" r="8" fill="#0F2C3D" opacity="0.30"/>
+  <circle cx="59" cy="33" r="4" fill="#0F2C3D" opacity="0.25"/>
+  <text x="48" y="62" text-anchor="middle" font-family="Verdana, Geneva, sans-serif" font-size="38" font-weight="bold" fill="#FFF6E5">?</text>
+</svg>
