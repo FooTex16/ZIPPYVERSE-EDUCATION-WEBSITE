@@ -49,6 +49,7 @@ import {
   Baby,
   ShieldAlert,
   ShieldCheck,
+  Coins,
 } from "lucide-react";
 import { tulisAdmin } from "@/lib/adminApi";
 import { play } from "@/lib/sfx";
@@ -77,6 +78,13 @@ export default function AdminAkun() {
   // Penyunting nama anak: { idPendamping, idAnak, nama }
   const [mengedit, setMengedit] = useState(null);
   const [nilaiEdit, setNilaiEdit] = useState("");
+
+  // Penyunting nilai pemain: { idPendamping, idAnak, nama }
+  // Terpisah dari `mengedit` karena keduanya menyentuh hal berbeda - nama ada
+  // di tabel `children`, nilai ada di tabel `players` - dan bila digabung
+  // satu tombol Enter di formulir bisa mengirim dua aksi sekaligus.
+  const [mengeditNilai, setMengeditNilai] = useState(null);
+  const [nilaiPemain, setNilaiPemain] = useState({ coins: 0, xp: 0, streak: 1 });
 
   function umumkan(t) {
     setPesan(t);
@@ -203,6 +211,42 @@ export default function AdminAkun() {
     if (!window.confirm(isi)) return;
 
     await jalankan("anak.hapus", { id: a.id }, `${a.nama} dihapus.`);
+  }
+
+  // ----------------------------------------------------------
+  // Edit nilai pemain seorang anak
+  // ----------------------------------------------------------
+
+  /**
+   * Buka penyunting nilai pemain.
+   *
+   * Nilainya diambil dari baris `players` yang disertakan server pada tiap
+   * anak. Anak yang belum pernah bermain tidak mempunyai baris (`pemain`
+   * null), dan ia diisi nol - bukan disalin dari anak lain yang kebetulan
+   * sebaris di atasnya.
+   */
+  function mulaiEditNilai(p, a) {
+    const n = a.pemain || {};
+    setMengeditNilai({ idPendamping: p.id, idAnak: a.id, nama: a.nama });
+    setNilaiPemain({
+      coins: Number(n.coins) || 0,
+      xp: Number(n.xp) || 0,
+      streak: Number(n.streak) || 0,
+    });
+  }
+
+  async function simpanNilai() {
+    if (!mengeditNilai) return;
+    const angka = (kunci) => {
+      const n = Math.floor(Number(nilaiPemain[kunci]));
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    };
+    const ok = await jalankan(
+      "pemain.simpan",
+      { child_id: mengeditNilai.idAnak, coins: angka("coins"), xp: angka("xp"), streak: angka("streak") },
+      `Nilai ${mengeditNilai.nama} diperbarui. Akan terbaca di perangkatnya saat berikutnya masuk.`
+    );
+    if (ok) setMengeditNilai(null);
   }
 
   // ---------------------------------------------------------- Render
@@ -460,7 +504,24 @@ export default function AdminAkun() {
                               <>
                                 <span className="min-w-0 flex-1 truncate text-sm font-black text-zippy-navy">
                                   {a.nama}
+                                  <span className="ml-2 text-[11px] font-bold text-zippy-navy/45">
+                                    {Number(a.pemain?.coins) || 0} koin
+                                  </span>
                                 </span>
+                                {/* Tombol Edit Data. Sengaja berlabel dan
+                                    diberi warna kuning - bukan ikon tanpa
+                                    keterangan seperti tombol sebelahnya -
+                                    sebab ini pintu menuju pekerjaan yang
+                                    tidak boleh tersamar: menyunting nilai
+                                    pemain milik anak lain. */}
+                                <button
+                                  onClick={() => mulaiEditNilai(p, a)}
+                                  className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-zippy-yellow px-2.5 py-1.5 text-xs font-black text-zippy-navy transition hover:brightness-105 active:scale-95"
+                                  aria-label={`Edit data ${a.nama}`}
+                                >
+                                  <Coins className="h-3.5 w-3.5" strokeWidth={3} />
+                                  Edit Data
+                                </button>
                                 <button
                                   onClick={() => mulaiEdit(p, a)}
                                   className="grid h-8 w-8 place-items-center rounded-lg bg-zippy-teal/15 text-zippy-teal transition hover:bg-zippy-teal/25 active:scale-95"
@@ -552,8 +613,11 @@ export default function AdminAkun() {
             begitu orang tua menekan simpan.
           </li>
           <li>
-            <b>Halaman &quot;Kelola Akun&quot; ini tidak menyentuh kemajuan bermain</b> (koin,
-            XP, pulau). Kemajuan ada di tab <b>Data Akun</b> dan <b>Supabase</b>.
+            <b>Tombol &quot;Edit Data&quot; menyunting nilai pemain</b> seorang anak
+            (koin, XP, rentetan bermain) lewat tab <b>Data Akun</b> yang sama.
+            Perubahannya terbaca di perangkat anak itu pada pemasangan akun
+            berikutnya. <b>Pulau tetap tidak bisa dibuka dari sini</b> - ia
+            dibuka lewat permainan, bukan lewat panel.
           </li>
           <li>
             <b>Akun berperan pengelola tampil terpisah</b> dengan lencana{" "}
@@ -567,6 +631,88 @@ export default function AdminAkun() {
           </li>
         </ul>
       </Kotak>
+
+      {/* Penyunting nilai pemain seorang anak.
+          Lapisan di atas panel, bukan halaman terpisah, supaya pengelola tidak
+          kehilangan tempat di daftar yang sedang dibacanya. */}
+      {mengeditNilai && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-zippy-navy/55 p-4"
+          onClick={() => setMengeditNilai(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Edit data ${mengeditNilai.nama}`}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-3xl border-4 border-zippy-yellow bg-cream p-5 shadow-pop-lg"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-display text-lg font-bold text-zippy-navy">
+                  Edit Data {mengeditNilai.nama}
+                </p>
+                <p className="mt-1 text-xs font-bold text-zippy-navy/60">
+                  Nilai ini terbaca di perangkatnya saat berikutnya masuk.
+                </p>
+              </div>
+              <button
+                onClick={() => setMengeditNilai(null)}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-zippy-navy/10 text-zippy-navy transition active:scale-95"
+                aria-label="Tutup"
+              >
+                <X className="h-4 w-4" strokeWidth={3} />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {[
+                { kunci: "coins", label: "Koin", batas: 1000000 },
+                { kunci: "xp", label: "XP", batas: 10000000 },
+                { kunci: "streak", label: "Rentetan bermain (hari)", batas: 100000 },
+              ].map((f) => (
+                <label key={f.kunci} className="block">
+                  <span className="text-[11px] font-black uppercase tracking-wide text-zippy-navy/55">
+                    {f.label} (maks. {f.batas.toLocaleString("id-ID")})
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={f.batas}
+                    value={nilaiPemain[f.kunci]}
+                    onChange={(e) =>
+                      setNilaiPemain({ ...nilaiPemain, [f.kunci]: e.target.value })
+                    }
+                    className="mt-1 w-full rounded-xl border-2 border-zippy-navy/15 bg-white px-3 py-2 text-sm font-bold text-zippy-navy outline-none focus:border-zippy-teal"
+                  />
+                </label>
+              ))}
+            </div>
+
+            <p className="mt-3 rounded-xl bg-zippy-navy/5 px-3 py-2 text-[11px] font-bold leading-relaxed text-zippy-navy/65">
+              Angka di atas hanya menyunting nilai. <b>Pulau tidak bisa dibuka dari sini</b> -
+              ia dibuka lewat permainan anak.
+            </p>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={simpanNilai}
+                disabled={sibuk}
+                className="flex-1 rounded-xl bg-zippy-teal px-4 py-2.5 text-sm font-black text-white transition active:scale-95 disabled:opacity-40"
+              >
+                Simpan
+              </button>
+              <button
+                onClick={() => setMengeditNilai(null)}
+                className="rounded-xl bg-zippy-navy/10 px-4 py-2.5 text-sm font-black text-zippy-navy transition active:scale-95"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

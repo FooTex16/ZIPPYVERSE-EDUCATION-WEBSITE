@@ -40,9 +40,15 @@ function dasar() {
     ...emptySave(),
     pendamping: { id: "u-1", email: "bunda@contoh.com" },
     anakPemilik: "u-1",
+    // `awan` adalah tautan ke baris `children` di basis data (dan lewat
+    // itulah baris `players` milik anak ini bisa ditemukan). Nilainya sengaja
+    // sudah terisi: fixture ini mewakili perangkat yang SUDAH PERNAH
+    // menyinkronkan daftarnya sekali. Tanpa isinya, sinkronisasi pertama
+    // akan selalu terhitung sebagai "ada perubahan" - dan memang begitu
+    // adanya, sebab menautkan anak memang harus terjadi satu kali dulu.
     anak: [
-      { id: "a1", nama: "Deka" },
-      { id: "a2", nama: "Nara" },
+      { id: "a1", nama: "Deka", awan: "a1" },
+      { id: "a2", nama: "Nara", awan: "a2" },
     ],
     anakAktif: "a1",
     simpanan: {
@@ -108,7 +114,50 @@ describe("terapkanDaftarAwan - anak baru dari panel admin", () => {
     ]);
 
     assert.equal(hasil.anak.length, 2);
-    assert.deepEqual(hasil.anak[0], { id: "uuid-1", nama: "Deka" });
+    assert.deepEqual(hasil.anak[0], { id: "uuid-1", nama: "Deka", awan: "uuid-1" });
+  });
+
+  it("setiap anak menyimpan tautan `awan` miliknya sendiri", () => {
+    // Tautan inilah yang menghubungkan seorang anak ke baris `players` miliknya
+    // (players.child_id). Tanpanya panel admin hanya bisa membaca nama anak,
+    // tidak bisa menyentuh nilai pemainnya - dan tombol Edit Data jadi hanya
+    // dekorasi.
+    const s = { ...emptySave(), pendamping: { id: "u-1", email: "x@y.z" } };
+
+    const hasil = terapkanDaftarAwan(s, [
+      { id: "uuid-1", nama: "Deka" },
+      { id: "uuid-2", nama: "Nara" },
+    ]);
+
+    assert.equal(hasil.anak[0].awan, "uuid-1");
+    assert.equal(hasil.anak[1].awan, "uuid-2");
+    assert.equal(hasil.anak[0].id, "uuid-1", "anak baru memakai id awan sekalian");
+  });
+
+  it("anak LAMA mempertahankan id perangkat, hanya tautan awannya yang diperbarui", () => {
+    // Id perangkat adalah kunci gudang kemajuan (s.simpanan). Menggantinya
+    // dengan uuid akan memutus seluruh kemajuan anak, jadi ia tidak boleh
+    // disentuh - hanya `awan` yang mengisi tautan baris pemain.
+    const s = dasar(); // a1 (Deka) dengan simpanan berisi "a1"
+
+    const hasil = terapkanDaftarAwan(s, [{ id: "0f9c2a11-1111-4444-8888-111111111111", nama: "Deka" }]);
+
+    assert.equal(hasil.anak.length, 1);
+    assert.equal(hasil.anak[0].id, "a1", "id perangkat tidak boleh berubah");
+    assert.equal(hasil.anak[0].awan, "0f9c2a11-1111-4444-8888-111111111111");
+    assert.ok(hasil.simpanan.a1, "gudang kemajuannya masih terbaca");
+  });
+
+  it("perubahan tautan awan tanpa ganti nama tetap menulis ulang", () => {
+    // Anak lama dihapus pengelola lalu yang baru dibuat dengan nama sama:
+    // id perangkatnya tetap, tetapi `awan` menunjuk baris berbeda. Bila
+    // perbedaan ini tidak ditulis ulang, nilai pemainnya akan tertaut ke
+    // baris milik anak yang sudah dihapus.
+    const s = { ...dasar(), anak: [{ id: "a1", nama: "Deka", awan: "uuid-lama" }] };
+
+    const hasil = terapkanDaftarAwan(s, [{ id: "uuid-baru", nama: "Deka" }]);
+
+    assert.equal(hasil.anak[0].awan, "uuid-baru", "tautan lama harus diganti");
   });
 
   it("anak baru disisipkan, anak lama tidak dilepas", () => {

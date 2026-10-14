@@ -70,29 +70,114 @@ export default function MissionDragCount({ mission, onDone, onScore }) {
     [placed, round.count, advance]
   );
 
-  // Logika drag memakai Pointer Events ( jalan di mouse & layar sentuh )
+  // Logika drag memakai Pointer Events (jalan di mouse & layar sentuh).
+  //
+  // ------------------------------------------------------- MENGAPA LAG DULU
+  //
+  // `pointermove` bisa dipanggil ratusan kali per detik, dan tiap gerakan
+  // dulu melakukan dua pekerjaan berat sekaligus:
+  //
+  //   1. `setDrag(...)` - mengubah state, sehingga SELURUH misi dirender
+  //      ulang: daftar benda yang dihitung, empat tombol angka, kotak slot,
+  //      dan komponen Zippy. Padahal yang benar-benar berubah cuma satu
+  //      angka melayang di layar.
+  //   2. Efeknya bergantung pada `[drag, attempt]`, jadi listener jendela
+  //      ikut dilepas dan dipasang ulang pada tiap gerakan pula.
+  //
+  // Dua pekerjaan itu berlipat ganda ratusan kali per detik, dan di HP yang
+  // lambat hasilnya adalah seretan yang tersendat di belakang jari anak.
+  //
+  // ------------------------------------------------------------- SEKARANG
+  //
+  // Posisi seretan tidak lagi disentuh React. Semua disimpan di ref, lalu
+  // ditulis langsung ke DOM dengan `transform: translate3d(...)` yang
+  // hanya memicu kompositasi - bukan perhitungan tata letak, bukan render
+  // ulang. `requestAnimationFrame` memastikan paling banyak satu tulisan
+  // per frame, seberapapun cepatnya jari bergerak.
+  //
+  // `drag` (state) kini hanya berubah dua kali dalam satu seretan: saat
+  // angkat dan saat lepas.
+  //
+  // Efek listener dipasang SEKALI di awal dan tidak pernah dilepas ulang;
+  // ia membaca keadaan terkini lewat ref, bukan lewat penutupan klosure.
+  const ghostRef = useRef(null);
+  const dragRef = useRef(null); // { value } selama seretan berlangsung
+  const posRef = useRef({ x: 0, y: 0 }); // posisi penunjuk terakhir
+  const asalRef = useRef({ x: 0, y: 0 }); // posisi saat penunjuk ditekan
+  const gerakRef = useRef(false); // penunjuk sudah bergeser cukup jauh?
+  const abaikanRef = useRef(false); // menelan klik hasil seretan
+  const rafRef = useRef(0);
+  const attemptRef = useRef(null); // attempt terbaru, dibaca listener
+
+  // Menyalin `attempt` terbaru ke ref. `attempt` berubah tiap ronde dan tiap
+  // kali anak menang, sedangkan listener tidak mau dipasang ulang terus -
+  // jadi ia dipancing lewat ref, bukan lewat daftar kebergantungan.
   useEffect(() => {
-    if (!drag) return;
-    const onMove = (e) => setDrag((d) => (d ? { ...d, x: e.clientX, y: e.clientY } : d));
+    attemptRef.current = attempt;
+  });
+
+  useEffect(() => {
+    const geser = () => {
+      if (!ghostRef.current) return;
+      ghostRef.current.style.transform =
+        `translate3d(${posRef.current.x}px, ${posRef.current.y}px, 0) translate(-50%, -50%)`;
+    };
+
+    const onMove = (e) => {
+      if (!dragRef.current) return;
+      // Diabaikan selama tombol belum benar-benar dilepas, supaya browser
+      // tidak mengerjakan apa pun untuk sebuah seretan yang belum terjadi.
+      e.preventDefault();
+
+      // Penanda "ini seretan, bukan ketukan". Ambang 8 piksel sengaja kecil
+      // supaya jari yang sedikit bergeser tidak disalahartikan sebagai
+      // menekan tombol angka saat dilepas.
+      if (Math.abs(e.clientX - asalRef.current.x) + Math.abs(e.clientY - asalRef.current.y) > 8) {
+        gerakRef.current = true;
+      }
+
+      posRef.current = { x: e.clientX, y: e.clientY };
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(geser);
+    };
+
     const onUp = (e) => {
+      const d = dragRef.current;
+      if (!d) return;
+      dragRef.current = null;
+
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      }
+
+      // Gerakan yang sungguh terjadi tidak boleh diteruskan sebagai ketukan,
+      // sebab event `click` tetap terbit setelah `pointerup`. Tanpa penanda
+      // ini, melepas jari di atas kotak slot sekaligus menyalakan tombol
+      // angka dan memainkan bunyi "pop" di atas bunyi jawaban benar.
+      if (gerakRef.current) abaikanRef.current = true;
+
       const el = slotRef.current;
       if (el) {
         const r = el.getBoundingClientRect();
         const inside =
           e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-        if (inside) attempt(drag.value);
+        if (inside) attemptRef.current(d.value);
       }
+
       setDrag(null);
     };
-    window.addEventListener("pointermove", onMove);
+
+    window.addEventListener("pointermove", onMove, { passive: false });
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [drag, attempt]);
+  }, []);
 
   if (!round) return null;
 
@@ -192,15 +277,28 @@ export default function MissionDragCount({ mission, onDone, onScore }) {
                 whileTap={{ scale: 0.9 }}
                 onPointerDown={(e) => {
                   if (placed !== null) return;
-                  const r = e.currentTarget.getBoundingClientRect();
-                  setDrag({ value: n, x: e.clientX, y: e.clientY, w: r.width });
+                  abaikanRef.current = false;
+                  gerakRef.current = false;
+                  asalRef.current = { x: e.clientX, y: e.clientY };
+                  posRef.current = { x: e.clientX, y: e.clientY };
+                  dragRef.current = { value: n };
+                  setDrag({ value: n, x: e.clientX, y: e.clientY });
                 }}
                 onClick={() => {
+                  // Klik yang lahir dari sebuah seretan dibuang. Event `click`
+                  // memang masih terbit setelah `pointerup`, jadi tanpa
+                  // penanda ini melepas jari di atas jembatan ikut menyalakan
+                  // tombol angkanya - lengkap dengan bunyi "pop" yang menimpa
+                  // bunyi jawaban benar.
+                  if (abaikanRef.current) {
+                    abaikanRef.current = false;
+                    return;
+                  }
                   if (placed !== null) return;
                   setSelected((s) => (s === n ? null : n));
                   play("pop");
                 }}
-                className={`drag-tile relative aspect-square rounded-3xl text-4xl font-black shadow-pop transition ${
+                className={`drag-tile relative aspect-square select-none rounded-3xl text-4xl font-black shadow-pop transition ${
                   placed !== null
                     ? "bg-white/20 text-white/40"
                     : selected === n
@@ -248,11 +346,16 @@ export default function MissionDragCount({ mission, onDone, onScore }) {
         )}
       </AnimatePresence>
 
-      {/* Ghost angka yang sedang diseret */}
+      {/* Ghost angka yang sedang diseret.
+          Posisinya ditulis langsung ke DOM lewat `transform: translate3d`,
+          bukan lewat state - supaya gerakan jari tidak pernah merender ulang
+          seluruh misi. Lihat catatan panjang pada efek drag di atas. */}
       {drag && (
         <div
-          className="pointer-events-none fixed z-[60] grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-3xl bg-zippy-yellow px-5 py-3 text-4xl font-black text-zippy-navy shadow-pop-lg"
-          style={{ left: drag.x, top: drag.y }}
+          ref={ghostRef}
+          aria-hidden
+          className="pointer-events-none fixed left-0 top-0 z-[60] grid place-items-center rounded-3xl bg-zippy-yellow px-5 py-3 text-4xl font-black text-zippy-navy shadow-pop-lg will-change-transform"
+          style={{ transform: `translate3d(${drag.x}px, ${drag.y}px, 0) translate(-50%, -50%)` }}
         >
           {drag.value}
         </div>

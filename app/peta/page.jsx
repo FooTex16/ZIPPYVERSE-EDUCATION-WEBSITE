@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, Shirt, BarChart3, Home, Sparkles } from "lucide-react";
+import { Lock, Shirt, BarChart3, Home, Sparkles, Package } from "lucide-react";
 import SpaceBackdrop from "@/components/SpaceBackdrop";
 import Zippy from "@/components/Zippy";
 import Hud from "@/components/Hud";
@@ -18,9 +18,17 @@ import {
   today,
   rewardInfo,
   claimDailyReward,
+  koinPeti,
+  petiTertunda,
+  klaimPeti,
 } from "@/lib/store";
 import { play, unlockAudio, setSfxEnabled } from "@/lib/sfx";
+import { supabase, supabaseEnabled } from "@/lib/supabase";
+import { bacaDraf, tulisDraf, adaDraf } from "@/lib/konten";
 import LoadingMeteors from "@/components/LoadingMeteors";
+import BarSettingPeta from "@/components/admin/BarSettingPeta";
+import PanelPulau from "@/components/admin/PanelPulau";
+import PanelMisi from "@/components/admin/PanelMisi";
 import { Gift, Check } from "lucide-react";
 
 /**
@@ -75,8 +83,33 @@ export default function PetaPage() {
   // suara "salah" yang tidak menjelaskan apa-apa.
   const [gerbang, setGerbang] = useState(false);
   const [sound, setSound] = useState(true);
+  // Pintu ruang kerja pengelola. Default false, jadi tamu dan pemain biasa
+  // tidak pernah sempat melihat tombol penyuntingan apa pun.
+  const [bolehAdmin, setBolehAdmin] = useState(false);
+  // Ruang kerja: null (tutup) | {tipe:"pulau"} | {tipe:"misi", slug}
+  const [panel, setPanel] = useState(null);
+  // Naskah suntingan developer. Hanya dibaca untuk sesi pengelola, karena
+  // menyimpannya di komponen berarti ia ikut terbaca tiap render.
+  const [draf, setDraf] = useState(null);
+  // Peringatan penyimpanan naskah (kuota penuh / mode privat).
+  const [galatKonten, setGalatKonten] = useState("");
+  // Status naskah: ada suntingan yang belum diterapkan? Dihitung DI SINI,
+  // bukan di dalam bilahnya, karena bilah hanya menghitung sekali saat
+  // dipasang - sedangkan pengelola bisa menulis naskah berkali-kali setelah
+  // bilah muncul. Kalau tidak, tanda "belum diterapkan" bisa membeku pada
+  // keadaan lama dan menyesatkan pengelola.
+  const [kotor, setKotor] = useState(false);
+  // Ucapan selamat saat peti berhasil dibuka. Ditampilkan beberapa detik
+  // lalu hilang sendiri supaya tidak menutupi peta.
+  const [pesanPeti, setPesanPeti] = useState(null);
   const bp = useBreakpoint();
   const { motionOn, toggleMotion } = useMotionToggle();
+
+  useEffect(() => {
+    if (!pesanPeti) return undefined;
+    const t = setTimeout(() => setPesanPeti(null), 3200);
+    return () => clearTimeout(t);
+  }, [pesanPeti]);
 
   // Ambil posisi pulau sesuai ukuran jendela, dengan cadangan aman.
   const posOf = (isl) => {
@@ -118,24 +151,87 @@ export default function PetaPage() {
     const s = touchStreak();
     unlockAudio();
 
-    // Pengaman akhir: pemilik akun yang belum memilih anak TIDAK BOLEH sampai
-    // melihat peta. Blob aktif pada saat itu masih berisi simpanan TAMU dari
-    // percobaan sebelumnya, sehingga peta menampilkan akun tamu seolah-olah
-    // si pemilik tidak pernah mendaftarkan anak sama sekali.
-    //
-    // Bawa ke halaman awal, tempat kartu akun dan daftar anak menunggu.
-    // Tamu (tanpa `pendamping`) dibiarkan lewat - mereka memang berhak
-    // memainkan Pulau Perkenalan.
-    if (s.pendamping && !s.anakAktif) {
-      router.replace("/");
-      return;
-    }
+    const lanjut = () => {
+      // Pengaman akhir: pemilik akun yang belum memilih anak TIDAK BOLEH sampai
+      // melihat peta. Blob aktif pada saat itu masih berisi simpanan TAMU dari
+      // percobaan sebelumnya, sehingga peta menampilkan akun tamu seolah-olah
+      // si pemilik tidak pernah mendaftarkan anak sama sekali.
+      //
+      // Bawa ke halaman awal, tempat kartu akun dan daftar anak menunggu.
+      // Tamu (tanpa `pendamping`) dibiarkan lewat - mereka memang berhak
+      // memainkan Pulau Perkenalan.
+      if (s.pendamping && !s.anakAktif) {
+        router.replace("/");
+        return;
+      }
+      setSave(s);
+    };
 
-    setSave(s);
+    // PENGELUAL KECUALIKAN. Akun berperan pengelola TIDAK mempunyai profil
+    // anak - dan memang sengaja tidak memilikinya. Tanpa pengecualian ini,
+    // pengelola yang menekan "Setting Peta" akan langsung dilempar kembali ke
+    // halaman awal, karena penjaga di atas mengira ia pemilik akun keluarga
+    // yang lupa memilih anak.
+    //
+    // Peran dibaca dari `app_metadata.role` yang ditulis Supabase dari sisi
+    // server; `user_metadata` tidak dipakai karena bisa diubah lewat Alat
+    // Pengembang. Kegagalan membaca sesi tidak memblokir apa pun: halaman
+    // diperlakukan seperti pemain biasa.
+    const periksa = async () => {
+      if (!supabaseEnabled || !supabase) {
+        lanjut();
+        return;
+      }
+      try {
+        const { data } = await supabase.auth.getSession();
+        const admin = data?.session?.user?.app_metadata?.role === "admin";
+        setBolehAdmin(admin);
+        if (admin) {
+          setSave(s);
+          return;
+        }
+      } catch {
+        /* jatuh ke perilaku biasa */
+      }
+      lanjut();
+    };
+    periksa();
+
     // `router` dari `useRouter()` stabil selama berada di halaman yang sama,
     // jadi efek ini tetap hanya berjalan sekali seperti sebelumnya. Dimasukkan
     // ke daftar dependensi sekadar untuk memuaskan `react-hooks/exhaustive-deps`.
   }, [router]);
+
+  // Naskah baru dibaca SETELAH peran pengelola terkonfirmasi. Membacanya
+  // lebih awal berarti menyimpan isi suntingan ke dalam state halaman yang
+  // juga dibuka pemain biasa - bukan bocoran rahasia (isinya soal pelajaran),
+  // tetapi tetap pekerjaan yang tidak perlu dilakukan untuk mereka.
+  useEffect(() => {
+    if (!bolehAdmin) return;
+    try {
+      setDraf(bacaDraf());
+      setKotor(adaDraf());
+    } catch {
+      setDraf(null);
+    }
+  }, [bolehAdmin]);
+
+  /** Tulis naskah ke perangkat pengelola. Gagal simpan bukanlah kegagalan
+   *  suntingan - pesannya dikembalikan supaya panel bisa memberi tahu. */
+  function simpanDraf(next) {
+    setDraf(next);
+    const ok = tulisDraf(next);
+    if (!ok) setGalatKonten("Naskah gagal disimpan (penyimpanan perangkat penuh atau mode privat).");
+    else setGalatKonten("");
+    // Status ikut dihitung ulang setiap kali naskah berubah, sehingga bilah
+    // tidak pernah menampilkan keadaan yang sudah basi.
+    try {
+      setKotor(adaDraf());
+    } catch {
+      setKotor(true);
+    }
+    return ok;
+  }
 
   const equipped = useMemo(() => {
     if (!save) return COSTUMES[0];
@@ -151,6 +247,15 @@ export default function PetaPage() {
 
   function goIsland(slug) {
     play("levelup");
+    // Ruang kerja pengelola: pulau dibuka sebagai PENYUNTING isinya, bukan
+    // sebagai permainan. Sengaja tidak melewati /pulau/[slug] sama sekali -
+    // halaman permainan tetap utuh dan tidak menyimpan satu pun cabang
+    // khusus admin yang bisa salah saat anak bermain.
+    if (bolehAdmin) {
+      setSel(null);
+      setPanel({ tipe: "misi", slug });
+      return;
+    }
     router.push(`/pulau/${slug}`);
   }
 
@@ -162,6 +267,25 @@ export default function PetaPage() {
       return;
     }
     play("levelup");
+    setSave(load());
+  }
+
+  /**
+   * Buka peti hadiah yang sedang menunggu.
+   *
+   * `klaimPeti` menghitung ulang sendiri tingkat yang berhak, jadi tekanan
+   * ganda atau peneleponan berulang tidak pernah memberi koin dua kali -
+   * hasilnya nol dan tidak ada yang berubah.
+   */
+  function bukaPetiSekarang() {
+    unlockAudio();
+    const out = klaimPeti(tingkatPeti);
+    if (!out.ok) {
+      play("wrong");
+      return;
+    }
+    play("levelup");
+    setPesanPeti(`Hore! Peti ke-${out.tingkat} terbuka - +${out.koin} koin!`);
     setSave(load());
   }
 
@@ -182,6 +306,11 @@ export default function PetaPage() {
 
   // Hadiah login harian (rangkaian 7 hari).
   const hadiah = rewardInfo(save);
+
+  // Peti hadiah: tingkat yang sedang menunggu dibuka, atau null.
+  // Selama null, kartu peti tidak dirender sama sekali - bukan dirender
+  // dalam keadaan "sudah habis", supaya peta tidak dipenuhi kotak mati.
+  const tingkatPeti = petiTertunda(save);
 
   // Pulau berikutnya yang seharusnya dimainkan anak (yang pertama belum
   // tamat dan sudah terbuka). Dipakai untuk memberi penanda berdenyut.
@@ -278,6 +407,23 @@ export default function PetaPage() {
         </div>
       </header>
 
+      {/* Ruang kerja pengelola. Hanya muncul untuk sesi berperan pengelola;
+          pemain biasa dan tamu tidak pernah menjumpai bilah ini. */}
+      {bolehAdmin && (
+        <BarSettingPeta
+          kotor={kotor}
+          onKelolaPulau={() => {
+            play("pop");
+            setPanel({ tipe: "pulau" });
+          }}
+        />
+      )}
+      {bolehAdmin && galatKonten && (
+        <div className="mx-4 mt-2 rounded-2xl bg-red-500/90 px-3 py-2.5 text-xs font-black text-white sm:mx-5" role="alert">
+          {galatKonten}
+        </div>
+      )}
+
       {/* Judul + hadiah harian */}
       <div className="relative z-20 px-4 pt-3 text-center sm:px-5 sm:pt-4">
         <h1 className="font-display text-[22px] font-bold leading-tight text-white text-stroke-navy sm:text-3xl">
@@ -350,6 +496,62 @@ export default function PetaPage() {
             )}
           </button>
         </motion.div>
+
+        {/* Peti hadiah. Muncul HANYA ketika ada pulau yang menunggu
+            dibukanya, sehingga peta tidak dipenuhi kartu mati. Ketika semua
+            tingkat sudah pernah dibuka, kartu ini hilang sama sekali. */}
+        {tingkatPeti && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ delay: 0.3, type: "spring", stiffness: 170, damping: 16 }}
+            className="mx-auto mt-3 flex max-w-md items-center gap-3 rounded-3xl border-4 border-zippy-yellow/70 bg-zippy-yellow/15 px-3 py-2.5 text-left backdrop-blur sm:px-4 sm:py-3"
+          >
+            <motion.span
+              animate={motionOn ? { rotate: [0, -8, 8, -5, 5, 0] } : { rotate: 0 }}
+              transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-zippy-yellow text-zippy-navy sm:h-11 sm:w-11"
+            >
+              <Package className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.8} />
+            </motion.span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-baseline justify-between gap-2">
+                <span className="font-display text-sm font-bold text-white sm:text-base">
+                  Peti Hadiah Terbuka!
+                </span>
+                <span className="shrink-0 text-xs font-black text-zippy-yellow sm:text-sm">
+                  {koinPeti(tingkatPeti)} koin
+                </span>
+              </span>
+              <span className="mt-1 block text-[11px] font-bold leading-tight text-white/55">
+                {doneCount} pulau sudah tamat · Peti ke-{tingkatPeti}
+              </span>
+            </span>
+            <button
+              onClick={bukaPetiSekarang}
+              aria-label="Buka peti hadiah"
+              className="btn-pop grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zippy-yellow text-zippy-navy sm:h-11 sm:w-11"
+            >
+              <Package className="h-5 w-5" strokeWidth={2.8} />
+            </button>
+          </motion.div>
+        )}
+
+        {/* Ucapan selamat setelah peti terbuka. Posisi tetap di layar, jadi
+            tidak bergeser walau peta sedang digulir. */}
+        <AnimatePresence>
+          {pesanPeti && (
+            <motion.div
+              initial={{ opacity: 0, y: -24, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -16, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 260, damping: 18 }}
+              className="pointer-events-none fixed inset-x-0 top-20 z-[70] mx-auto w-fit max-w-[min(90vw,26rem)] rounded-full bg-zippy-yellow px-6 py-3 text-center font-display text-sm font-black text-zippy-navy shadow-pop-lg sm:text-base"
+            >
+              🎉 {pesanPeti}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Ajakan daftar untuk tamu. Ditaruh sebelum Tantangan Harian supaya
             langsung terlihat tanpa menggulir, dan supaya anak paham mengapa
@@ -522,12 +724,16 @@ export default function PetaPage() {
                 initial={{ opacity: 0, scale: 0.6, y: 30 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ delay: i * 0.12, type: "spring", stiffness: 150, damping: 13 }}
-                whileHover={open ? { scale: 1.08, y: -6 } : {}}
-                whileTap={open ? { scale: 0.95 } : {}}
+                whileHover={open || bolehAdmin ? { scale: 1.08, y: -6 } : {}}
+                whileTap={open || bolehAdmin ? { scale: 0.95 } : {}}
                 onClick={() => {
                   // Pulau masa depan tetap boleh diketuk supaya anak tahu
                   // isinya sedang disiapkan, bukan merasa salah menekan.
                   if (open || isl.soon) setSel(isl);
+                  // Mode ruang kerja: pengelola boleh membuka SETIAP pulau,
+                  // termasuk yang terkunci. Ia datang untuk menyunting isinya,
+                  // bukan untuk membukanya dengan bermain.
+                  else if (bolehAdmin) setSel(isl);
                   // Tamu tidak diberi suara "salah" begitu saja - ia dibawa
                   // ke ajakan mendaftar, karena itu memang satu-satunya cara
                   // membuka pulau yang dikliknya.
@@ -694,20 +900,30 @@ export default function PetaPage() {
                   <button
                     onClick={() => setSel(null)}
                     className={`btn-pop rounded-2xl px-4 py-3 font-black text-zippy-navy ${
-                      sel.soon ? "w-full" : "flex-1"
+                      sel.soon && !bolehAdmin ? "w-full" : "flex-1"
                     } bg-zippy-navy/10`}
                   >
                     Nanti
                   </button>
-                  {!sel.soon && (
+                  {/* Pengelola masuk untuk MENYUNTING isi pulau, bukan untuk
+                      bermain - karena itu tulisannya "Masuk", bukan
+                      "Masuk Pulau!", dan pulau "segera hadir" pun tetap bisa
+                      dibuka isinya (memang belum ada misi di sana). */}
+                  {(bolehAdmin || !sel.soon) && (
                     <button
                       onClick={() => goIsland(sel.slug)}
                       className="btn-pop flex-[2] rounded-2xl bg-zippy-yellow px-4 py-3 font-black text-zippy-navy"
                     >
-                      Masuk Pulau!
+                      {bolehAdmin ? "Masuk" : "Masuk Pulau!"}
                     </button>
                   )}
                 </div>
+                {bolehAdmin && (
+                  <p className="mt-3 rounded-2xl bg-zippy-navy/10 px-3 py-2 text-center text-[11px] font-bold leading-relaxed text-zippy-navy/65">
+                    Anda akan masuk ke <b>penyunting isi pulau</b>: teks soal,
+                    jawaban, menambah dan menghapus misi. Bukan permainan.
+                  </p>
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -782,6 +998,31 @@ export default function PetaPage() {
       />
 
       <ZippyChat />
+
+      {/* -----------------------------------------------------------
+          Ruang kerja pengelola. Dua lapisan penuh di atas peta:
+          "Kelola Pulau" (tambah/hapus/ubah pulau) dan penyunting isi
+          misi satu pulau. Keduanya hanya dirender ketika naskah sudah
+          terbaca - kalau belum, menampilkannya akan membuat panel misi
+          mengeluh "pulau tidak ditemukan" padahal belum ada yang salah.
+          ----------------------------------------------------------- */}
+      {bolehAdmin && draf && panel?.tipe === "pulau" && (
+        <PanelPulau draf={draf} simpanDraf={simpanDraf} tutup={() => setPanel(null)} />
+      )}
+      {bolehAdmin && draf && panel?.tipe === "misi" && (
+        <PanelMisi
+          slug={panel.slug}
+          draf={draf}
+          simpanDraf={simpanDraf}
+          tutup={() => setPanel(null)}
+          keKelolaPulau={() => setPanel({ tipe: "pulau" })}
+        />
+      )}
+      {bolehAdmin && panel && !draf && (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-zippy-navy/95">
+          <p className="text-sm font-bold text-white/70">Membuka naskah...</p>
+        </div>
+      )}
 
       {/* Info kecil */}
       <p className="relative z-10 px-5 pb-6 text-center text-xs font-bold text-white/35">

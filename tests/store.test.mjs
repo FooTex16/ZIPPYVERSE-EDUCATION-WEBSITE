@@ -33,6 +33,9 @@ const {
   staminaInfo,
   rewardInfo,
   claimDailyReward,
+  koinPeti,
+  petiTertunda,
+  klaimPeti,
 } = await import("../lib/store.js");
 
 // ---- Peralatan bantu ----
@@ -251,5 +254,85 @@ describe("Hadiah harian", () => {
     const info = rewardInfo();
     assert.equal(info.day, 1);
     assert.equal(info.amount, 50);
+  });
+});
+
+// ============================================================
+// Peti hadiah - dibuka setiap tiga pulau ditamatkan
+// ============================================================
+describe("Peti hadiah", () => {
+  /** Isi `islands` dengan n pulau bertanda `done`, sisanya belum. */
+  function pulauTamat(n, total = 6) {
+    const islands = {};
+    for (let i = 0; i < total; i += 1) {
+      islands[`p${i}`] = { done: i < n, missions: {} };
+    }
+    return islands;
+  }
+
+  it("belum ada peti selama kurang dari tiga pulau tamat", () => {
+    simpan({ islands: pulauTamat(2), petiDibuka: [] });
+    assert.equal(petiTertunda(), null, "dua pulau belum cukup");
+  });
+
+  it("peti pertama menunggu tepat di tiga pulau", () => {
+    simpan({ islands: pulauTamat(3), petiDibuka: [] });
+    assert.equal(petiTertunda(), 1);
+  });
+
+  it("pulau yang belum tamat tidak ikut dihitung", () => {
+    simpan({
+      islands: { a: { done: true }, b: { done: false }, c: { done: true } },
+      petiDibuka: [],
+    });
+    assert.equal(petiTertunda(), null, "baru dua pulau tamat");
+  });
+
+  it("enam pulau tamat membuka peti kedua setelah yang pertama diklaim", () => {
+    simpan({ islands: pulauTamat(6), petiDibuka: [] });
+
+    assert.equal(petiTertunda(), 1, "yang paling awal didahulukan");
+    assert.equal(klaimPeti(1).ok, true);
+    assert.equal(petiTertunda(), 2, "tingkat kedua menyusul");
+  });
+
+  it("klaim memberi koin, lalu peti yang sama tidak terbuka dua kali", () => {
+    simpan({ islands: pulauTamat(3), coins: 10, petiDibuka: [] });
+
+    const pertama = klaimPeti(1);
+    assert.equal(pertama.ok, true);
+    assert.equal(pertama.koin, koinPeti(1), "koin sesuai tingkatnya");
+    assert.equal(baca().coins, 10 + koinPeti(1), "koin benar-benar masuk");
+    assert.deepEqual(baca().petiDibuka, [1]);
+
+    const kedua = klaimPeti(1);
+    assert.equal(kedua.ok, false, "tidak bisa dibuka dua kali");
+    assert.equal(baca().coins, 10 + koinPeti(1), "koin tidak bertambah lagi");
+    assert.deepEqual(baca().petiDibuka, [1], "daftar tidak kembar");
+  });
+
+  it("menekan tingkat yang belum berhak tidak memberi apa-apa", () => {
+    simpan({ islands: pulauTamat(3), coins: 0, petiDibuka: [] });
+
+    const r = klaimPeti(2);
+    assert.equal(r.ok, false, "tingkat 2 belum terbuka");
+    assert.equal(baca().coins, 0, "koin tetap nol");
+    assert.deepEqual(baca().petiDibuka, [], "tidak ada yang ditandai sudah");
+  });
+
+  it("simpanan lama tanpa kunci `petiDibuka` tetap terbaca", () => {
+    // Save yang dibuat sebelum fitur ini ada tidak mempunyai kunci itu sama
+    // sekali. Ia harus dianggap "belum pernah membuka peti", bukan membuat
+    // fungsi melempar kesalahan saat peta dibuka.
+    simpan({ islands: pulauTamat(3) });
+
+    assert.equal(petiTertunda(), 1, "dianggap belum pernah membuka peti");
+    assert.equal(koinPeti(1), 100, "peti pertama berisi 100 koin");
+    assert.equal(klaimPeti(1).ok, true, "klaim tetap jalan pada simpanan lama");
+  });
+
+  it("koin peti naik menurut tingkat, bukan datar", () => {
+    assert.ok(koinPeti(2) > koinPeti(1), "tingkat 2 harus lebih besar");
+    assert.ok(koinPeti(3) > koinPeti(2), "tingkat 3 harus lebih besar lagi");
   });
 });
