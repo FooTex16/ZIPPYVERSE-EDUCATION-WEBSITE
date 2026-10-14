@@ -25,7 +25,8 @@
 
 import { useState } from "react";
 import { Database, ShieldCheck, Play, Copy, AlertTriangle } from "lucide-react";
-import { supabase, supabaseEnabled } from "@/lib/supabase";
+import { supabaseEnabled } from "@/lib/supabase";
+import { bacaTabel } from "@/lib/adminApi";
 
 const LIMIT = 200;
 
@@ -53,16 +54,6 @@ const KUERI_SQL = [
   },
 ];
 
-/** Terjemahkan kode galat Supabase ke kalimat yang bisa dipahami. */
-function terjemahGalat(code, message) {
-  if (code === "42501") return "Ditolak: kebijakan RLS memblokir kunci anon. Ini tanda RLS aktif dan tidak ada izin baca.";
-  if (code === "PGRST205" || /could not find the table/i.test(message || ""))
-    return "Tabel belum ada di database.";
-  if (code === "PGRST204") return "Kolom yang diminta tidak ada. Perlu migrasi schema (lihat kueri ke-4).";
-  if (/failed to fetch|network/i.test(message || "")) return "Jaringan gagal. Periksa koneksi internet.";
-  return message || "Galat tidak dikenal.";
-}
-
 export default function AdminSupabase() {
   const [tabel, setTabel] = useState(null);
   const [baris, setBaris] = useState([]);
@@ -78,28 +69,18 @@ export default function AdminSupabase() {
     setJumlah(null);
     setStatus("memuat");
     try {
-      if (!supabaseEnabled) throw new Error("Supabase tidak dikonfigurasi di perangkat ini.");
-
-      // Hitung dulu tanpa mengambil baris, supaya panel tetap berguna walau
-      // isi tabel terlalu besar untuk ditampilkan.
-      const hitung = await supabase
-        .from(namaTabel)
-        .select("*", { count: "exact", head: true });
-
-      if (hitung.error) {
-        setGalat(terjemahGalat(hitung.error.code, hitung.error.message));
+      // Seluruh pembacaan kini lewat /api/admin, bukan langsung dari peramban.
+      // Peramban tidak lagi memegang kunci istimewa apa pun untuk tabel ini —
+      // ia hanya mengirim token sesi miliknya sendiri, lalu SERVER yang
+      // memutuskan boleh atau tidak, setelah memeriksa peran pengelolanya.
+      const r = await bacaTabel(namaTabel, LIMIT);
+      if (!r.ok) {
+        setGalat(r.galat || "Gagal membaca tabel.");
         setStatus("gagal");
         return;
       }
-      setJumlah(hitung.count);
-
-      const { data, error } = await supabase.from(namaTabel).select("*").limit(LIMIT);
-      if (error) {
-        setGalat(terjemahGalat(error.code, error.message));
-        setStatus("gagal");
-        return;
-      }
-      setBaris(data || []);
+      setJumlah(r.jumlah);
+      setBaris(r.baris || []);
       setStatus("selesai");
     } catch (e) {
       setGalat(e.message || String(e));
@@ -146,9 +127,11 @@ export default function AdminSupabase() {
         <div className="mt-3 rounded-2xl bg-amber-100 p-3">
           <p className="flex items-start gap-2 text-[11px] font-bold leading-relaxed text-amber-900">
             <AlertTriangle className="mt-px h-4 w-4 shrink-0" strokeWidth={3} />
-            Panel ini hanya bisa <b>membaca</b>. Menambah atau mengubah data pemain harus
-            lewat dasbor Supabase dengan kunci service role, karena kunci yang dipakai
-            halaman ini dipakai semua pengunjung.
+            Pembacaan berjalan lewat <code className="rounded bg-amber-200/70 px-1">/api/admin</code>{" "}
+            di server, setelah peran Anda diperiksa. Tombol tambah/ubah/hapus sengaja
+            tidak disediakan: panel ini memang dibuat <b>baca-saja</b>, dan perubahan
+            data sebaiknya dilakukan dari dasbor Supabase supaya tercatat siapa
+            pelakunya.
           </p>
         </div>
       </section>
