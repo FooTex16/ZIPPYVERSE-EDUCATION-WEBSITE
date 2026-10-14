@@ -27,7 +27,7 @@ import Link from "next/link";
 import SpaceBackdrop from "@/components/SpaceBackdrop";
 import Zippy from "@/components/Zippy";
 import { unlockAudio, play } from "@/lib/sfx";
-import { touchStreak } from "@/lib/store";
+import { touchStreak, persist } from "@/lib/store";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 import FeedbackForm from "@/components/FeedbackForm";
 import { daftarAnak, tambahAnak, pilihAnak, lepasProfil, mulaiTamu, MAKS_ANAK } from "@/lib/profil";
@@ -51,9 +51,11 @@ import { moodKostum, ISLANDS } from "@/lib/gameData";
 // masih menimbang bisa membaca dulu tanpa merasa dipaksa mendaftar.
 // ============================================================
 
-// Lima pulau tujuan. Pulau `soon` dan pulau trial sengaja dibuang: yang
-// dijual di halaman ini adalah pengalaman lengkapnya, bukan pintu coba-coba.
-const PULAU = ISLANDS.filter((i) => !i.soon && !i.trial);
+// Lima pulau tujuan pernah dihitung DI SINI, di tingkat modul. Tidak bisa
+// lagi: modul dievaluasi hanya sekali saat berkas dibuka, sedangkan isi
+// peta boleh berubah sesudahnya akibat suntingan developer yang diterapkan
+// lewat tombol "Terapkan Update". Nilainya kini dihitung di dalam komponen
+// (lihat `PULAU` pada LandingPage) supaya ikut berubah pada render berikutnya.
 
 /** Keunggulan yang menarik bagi ANAK - bahasanya tentang bermain. */
 const UNTUK_ANAK = [
@@ -198,6 +200,14 @@ export default function LandingPage() {
   // selalu false, jadi tamu tidak pernah sempat melihatnya.
   const [bolehAdmin, setBolehAdmin] = useState(false);
 
+  // Lima pulau tujuan. Pulau `soon` dan pulau trial sengaja dibuang: yang
+  // dijual di halaman ini adalah pengalaman lengkapnya, bukan pintu
+  // coba-coba.
+  //
+  // Dihitung di dalam komponen, bukan di tingkat modul, supaya isi peta
+  // hasil suntingan developer ikut terbaca pada render berikutnya.
+  const PULAU = ISLANDS.filter((i) => !i.soon && !i.trial);
+
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem("zippyverse_save_v1");
@@ -207,7 +217,26 @@ export default function LandingPage() {
         setEquipped(s.equipped || "default");
         setAdaSimpanan(Boolean(s.nickname || s.playerId));
         setPendamping(s.pendamping || null);
-        setAnak(daftarAnak(s));
+        const daftar = daftarAnak(s);
+        setAnak(daftar);
+
+        // INVARIAN: nama pemain hanya boleh ada bila ada anak yang aktif.
+        //
+        // Perangkat menyimpan nama anak terakhir di `nickname`. Ketika akun
+        // itu berakhir tanpa anak sama sekali - akun pengelola yang tidak
+        // mempunyai profil anak, atau pemilik akun yang anaknya baru saja
+        // dihapus pengelola - nama lama itu tetap tertinggal dan ikut
+        // tampil di HUD seolah anaknya masih terdaftar.
+        //
+        // Dibersihkan di sini, bukan di `load()`, supaya perilaku simpanan
+        // yang diuji berkas tests/ tidak ikut berubah.
+        if (s.pendamping && !s.anakAktif && daftar.length === 0 && s.nickname) {
+          s.nickname = "";
+          try {
+            persist(s);
+          } catch {}
+          setAdaSimpanan(Boolean(s.playerId));
+        }
       }
     } catch {}
     setReady(true);
@@ -376,6 +405,38 @@ export default function LandingPage() {
    */
   const sudahMasuk = Boolean(pendamping);
 
+  // --------------------------------------------------------------
+  // Mode pengelola: halaman awal menjadi ruang kerja, bukan pintu main
+  // --------------------------------------------------------------
+  // Pengelola tidak bermain dari sini. Tombol utamanya membuka peta sebagai
+  // tempat menyunting pulau dan misi - oleh karenanya tulisannya "Setting
+  // Peta", bukan "Mulai Bermain", dan ia langsung menuju peta tanpa melewati
+  // pemilihan nama anak (pengelola memang tidak punya profil anak).
+  const modePengelola = bolehAdmin && sudahMasuk;
+
+  // Tiga langkah di bawah menjelaskan cara MEMULAI SEBAGAI TAMU. Bila pengelola
+  // sedang melihat halaman ini, langkah pertama yang ia baca harus sesuai dengan
+  // tombol yang benar-benar ada di layar - bukan "Tekan Mulai Bermain" padahal
+  // yang tertulis "Setting Peta". Dua langkah sisanya tetap sama: mereka memang
+  // menjelaskan cara kerja situs secara umum.
+  const langkahDilihat = modePengelola
+    ? LANGKAH.map((l, i) =>
+        i === 0
+          ? {
+              ...l,
+              title: "Masuk sebagai pengelola",
+              desc: "Tekan Setting Peta. Peta terbuka sebagai ruang kerja: menambah pulau dan menyunting teks soal sebelum diterapkan ke semua anak.",
+            }
+          : l
+      )
+    : LANGKAH;
+
+  function bukaSettingPeta() {
+    unlockAudio();
+    play("levelup");
+    router.push("/peta");
+  }
+
   return (
     <main className="space-bg relative min-h-screen overflow-x-clip">
       <SpaceBackdrop />
@@ -507,15 +568,24 @@ export default function LandingPage() {
               {/* Pengunjung yang sudah masuk hanya diberi SATU jalan: bermain.
                   Tidak ada lagi "Daftar / Masuk" (sudah masuk) dan tidak ada
                   "Lanjutkan Bermain" (nama pemainnya belum dipilih - justru
-                  pemilihan itulah yang dimulai lewat tombol ini). */}
+                  pemilihan itulah yang dimulai lewat tombol ini).
+
+                  PENGELOLA kebalikannya: baginya tombol ini membuka peta
+                  sebagai ruang penyuntingan, jadi tulisannya "Setting Peta". */}
               <div className="mt-8 flex flex-wrap gap-3">
                 <motion.button
                   whileHover={{ scale: 1.03, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={bukaPanel}
+                  onClick={modePengelola ? bukaSettingPeta : bukaPanel}
                   className="btn-pop flex items-center gap-2 rounded-2xl bg-zippy-yellow px-6 py-3.5 text-base font-black text-zippy-navy sm:text-lg"
                 >
-                  {sudahMasuk ? "Mulai Bermain" : ready && adaSimpanan ? "Lanjutkan Bermain" : "Mulai Bermain"}
+                  {modePengelola
+                    ? "Setting Peta"
+                    : sudahMasuk
+                      ? "Mulai Bermain"
+                      : ready && adaSimpanan
+                        ? "Lanjutkan Bermain"
+                        : "Mulai Bermain"}
                   <ArrowRight className="h-5 w-5" strokeWidth={3} />
                 </motion.button>
 
@@ -535,7 +605,15 @@ export default function LandingPage() {
               </div>
 
               <p className="mt-3 max-w-md text-sm font-semibold text-white/55">
-                {sudahMasuk ? (
+                {modePengelola ? (
+                  <>
+                    <span className="text-zippy-mint">Setting Peta</span> membuka
+                    peta sebagai ruang kerja: tambah atau hapus pulau, sunting
+                    teks soal dan jawabannya, lalu tekan{" "}
+                    <span className="text-zippy-mint">Terapkan Update</span> agar
+                    langsung berlaku untuk semua akun anak.
+                  </>
+                ) : sudahMasuk ? (
                   <>
                     <span className="text-zippy-mint">Pilih nama anak</span> di
                     bawah, lalu petualangan langsung dimulai. Kemajuan tiap anak
@@ -604,28 +682,35 @@ export default function LandingPage() {
                   </span>
                   <div className="min-w-0">
                     <p className="text-[11px] font-black uppercase tracking-wider text-zippy-mint">
-                      Akun Pendamping
+                      {modePengelola ? "Akun Admin Khusus" : "Akun Pendamping"}
                     </p>
                     <p className="truncate font-display text-lg font-bold text-white">
                       {pendamping.email}
                     </p>
                     <p className="text-xs font-bold text-white/55">
-                      {anak.length === 0
-                        ? "Belum ada anak terdaftar"
-                        : `${anak.length} anak terdaftar`}
+                      {modePengelola
+                        ? "Pengelola situs · bukan akun Pendamping, tidak menyimpan profil anak"
+                        : anak.length === 0
+                          ? "Belum ada anak terdaftar"
+                          : `${anak.length} anak terdaftar`}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <motion.button
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
-                    onClick={bukaPanel}
-                    className="rounded-full bg-zippy-yellow px-4 py-2.5 text-sm font-black text-zippy-navy transition hover:brightness-105"
-                  >
-                    + Tambah Anak
-                  </motion.button>
+                  {/* Tombol ini disembunyikan untuk pengelola: akun admin sengaja
+                      tidak mempunyai profil anak, sehingga tidak ada yang bisa
+                      ditambahkan darinya. */}
+                  {!modePengelola && (
+                    <motion.button
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={bukaPanel}
+                      className="rounded-full bg-zippy-yellow px-4 py-2.5 text-sm font-black text-zippy-navy transition hover:brightness-105"
+                    >
+                      + Tambah Anak
+                    </motion.button>
+                  )}
                   <motion.button
                     whileHover={{ scale: 1.04 }}
                     whileTap={{ scale: 0.96 }}
@@ -640,15 +725,18 @@ export default function LandingPage() {
               {/* Daftar anak - inti dari halaman ini */}
               <div className="mt-6">
                 <h3 className="font-display text-lg font-bold text-white sm:text-xl">
-                  Siapa yang mau bermain hari ini?
+                  {modePengelola
+                    ? "Ruang kerja pengelola"
+                    : "Siapa yang mau bermain hari ini?"}
                 </h3>
                 <p className="mt-1 text-sm font-semibold text-white/60">
-                  Petik nama, lalu petualangan langsung dimulai. Tidak perlu
-                  kata sandi.
+                  {modePengelola
+                    ? "Akun ini tidak menyimpan profil anak. Seluruh pulau disunting lewat tombol Setting Peta di bawah."
+                    : "Petik nama, lalu petualangan langsung dimulai. Tidak perlu kata sandi."}
                 </p>
 
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {anak.map((a, i) => (
+                  {!modePengelola && anak.map((a, i) => (
                     <motion.button
                       key={a.id}
                       initial={{ opacity: 0, scale: 0.9 }}
@@ -668,8 +756,9 @@ export default function LandingPage() {
                     </motion.button>
                   ))}
 
-                  {/* Kotak tambah - selalu ada selama belum mencapai batas */}
-                  {anak.length < MAKS_ANAK && (
+                  {/* Kotak tambah - selalu ada selama belum mencapai batas.
+                      Untuk pengelola, kotak ini sengaja tidak ikut muncul. */}
+                  {!modePengelola && anak.length < MAKS_ANAK && (
                     <motion.button
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -686,8 +775,10 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Keadaan kosong: cara mendaftarkan anak pertama */}
-              {anak.length === 0 && (
+              {/* Keadaan kosong: cara mendaftarkan anak pertama.
+                  Hanya untuk pemilik akun Pendamping - pengelola tidak
+                  mendaftarkan anak, jadi petunjuk ini tidak relevan baginya. */}
+              {anak.length === 0 && !modePengelola && (
                 <div className="mt-5 rounded-2xl border-2 border-zippy-mint/30 bg-zippy-mint/10 p-4">
                   <p className="font-display text-sm font-bold text-zippy-mint">
                     Cara mendaftarkan anak
@@ -705,6 +796,24 @@ export default function LandingPage() {
                       akun.
                     </li>
                   </ol>
+                </div>
+              )}
+
+              {/* Pengelola tidak punya anak untuk dipilih, jadi yang ditampilkan
+                  adalah penjelasan singkat tentang apa yang sebenarnya bisa
+                  ia lakukan dari halaman ini. */}
+              {modePengelola && (
+                <div className="mt-4 grid gap-3 rounded-3xl border-2 border-zippy-yellow/55 bg-zippy-yellow/10 p-4 sm:grid-cols-3">
+                  {[
+                    ["Setting Peta", "Tambah dan hapus pulau, sunting teks soal beserta jawabannya."],
+                    ["Terapkan Update", "Satu tekan, seluruh isi baru langsung terbaca semua akun anak."],
+                    ["Data Akun", "Kelola seluruh data akun Pendamping dan anak dari panel admin."],
+                  ].map(([judul, isi]) => (
+                    <div key={judul} className="rounded-2xl bg-zippy-navy/45 p-3">
+                      <p className="font-display text-sm font-bold text-zippy-yellow">{judul}</p>
+                      <p className="mt-1 text-xs font-semibold leading-relaxed text-white/65">{isi}</p>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -860,7 +969,7 @@ export default function LandingPage() {
             Mulainya sederhana
           </h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {LANGKAH.map((l, i) => (
+            {langkahDilihat.map((l, i) => (
               <motion.div
                 key={l.no}
                 initial={{ opacity: 0, y: 20 }}
@@ -1003,10 +1112,10 @@ export default function LandingPage() {
               <motion.button
                 whileHover={{ scale: 1.04, y: -3 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={bukaPanel}
+                onClick={modePengelola ? bukaSettingPeta : bukaPanel}
                 className="btn-pop flex items-center gap-2 rounded-2xl bg-zippy-yellow px-6 py-3.5 text-base font-black text-zippy-navy"
               >
-                Mulai Bermain
+                {modePengelola ? "Setting Peta" : "Mulai Bermain"}
                 <ArrowRight className="h-5 w-5" strokeWidth={3} />
               </motion.button>
               {!sudahMasuk && (
@@ -1110,7 +1219,10 @@ export default function LandingPage() {
                     ))}
                   </div>
 
-                  {anak.length < MAKS_ANAK && (
+                  {/* Akses tambah anak juga ditutup di dalam panel pilihan nama,
+                      bukan hanya di tombolnya - satu pintu terbuka sudah cukup
+                      untuk membuat akun pengelola kembali mempunyai anak. */}
+                  {!modePengelola && anak.length < MAKS_ANAK && (
                     <button
                       onClick={() => {
                         setGalatNama("");

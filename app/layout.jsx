@@ -1,4 +1,5 @@
 import "./globals.css";
+import PemuatKonten from "@/components/PemuatKonten";
 
 // Alamat situs dipakai untuk tautan absolut pada OpenGraph dan sitemap.
 // Saat di-host, atur NEXT_PUBLIC_SITE_URL pada berkas .env.local atau pada
@@ -69,7 +70,12 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {/* Seluruh isi peta dan misi melewati pemuat ini: ia memasang suntingan
+            developer setelah hidrasi, dan hanya merestart halaman bila isi
+            yang terpasang benar-benar berbeda dari yang sedang tampil. */}
+        <PemuatKonten>{children}</PemuatKonten>
+      </body>
     </html>
   );
 }
