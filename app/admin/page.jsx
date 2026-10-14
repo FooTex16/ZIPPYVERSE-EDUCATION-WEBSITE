@@ -34,8 +34,10 @@ import { supabase, supabaseEnabled } from "@/lib/supabase";
 import AdminPerangkat from "@/components/admin/AdminPerangkat";
 import AdminSupabase from "@/components/admin/AdminSupabase";
 import AdminKonten from "@/components/admin/AdminKonten";
+import AdminAkun from "@/components/admin/AdminAkun";
 
 const TAB = [
+  { id: "akun", label: "Kelola Akun", desc: "Pendamping & anak mereka" },
   { id: "perangkat", label: "Perangkat", desc: "Kemajuan pemain di browser ini" },
   { id: "supabase", label: "Supabase", desc: "Telusuri tabel (baca saja)" },
   { id: "konten", label: "Konten", desc: "Harga, hadiah, batas energi" },
@@ -176,6 +178,7 @@ export default function AdminPage() {
               ))}
             </nav>
 
+            {tab === "akun" && <AdminAkun />}
             {tab === "perangkat" && <AdminPerangkat />}
             {tab === "supabase" && <AdminSupabase />}
             {tab === "konten" && <AdminKonten />}

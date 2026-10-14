@@ -49,7 +49,16 @@ export const adminTersedia = Boolean(url && serviceKey);
  * sengaja dibuat, ia tidak akan bisa dibaca lewat pintu ini hanya karena
  * ada yang menebak namanya.
  */
-const TABEL_DIIZINKAN = new Set(["players", "progress"]);
+const TABEL_DIIZINKAN = new Set([
+  "players",
+  "progress",
+  // Kelola data akun: anak beraut pendamping, dan profil pendampingnya.
+  "children",
+  "profiles",
+  // Materi "Lihat Planet" - hanya admin yang boleh menulisnya.
+  "planets",
+  "missions",
+]);
 
 const BATAS_BARIS = 500;
 
@@ -177,6 +186,313 @@ export async function GET(req) {
       { status: 500 }
     );
   }
+}
+
+// ============================================================
+// Tulis - satu-satunya tempat panel admin boleh mengubah data
+// ============================================================
+//
+// Seluruh aksi di bawah melewati `verifikasiPengelola()` lebih dulu, jadi
+// pengunjung biasa yang menebak-nebak endpoint ini berhenti di 403 sebelum
+// satu byte pun dibaca. Kunci service role tidak pernah meninggalkan proses
+// ini.
+//
+// Validasi dilakukan di SERVER, bukan di formulirnya: formulir bisa dilewati
+// dengan mengirim permintaan langsung memakai Alat Pengembang.
+
+/** Batas anak per pendamping - sejajar dengan MAKS_ANAK di lib/profil.js. */
+const MAKS_ANAK = 6;
+
+/** Panjang maksimum nama anak - sejajar dengan potongan di tambahAnak(). */
+const MAKS_NAMA_ANAK = 18;
+
+/** Aksi tulis yang dikenal. Tak ada yang lain akan ditolak. */
+const AKSI_TULIS = new Set([
+  "pendamping.daftar",
+  "pendamping.buat",
+  "pendamping.hapus",
+  "anak.simpan",
+  "anak.hapus",
+]);
+
+const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** @param {string} s @returns {boolean} */
+const isUuid = (s) => typeof s === "string" && RE_UUID.test(s);
+
+export async function POST(req) {
+  try {
+    const hasil = await verifikasiPengelola(req);
+    if (hasil.galat) {
+      return NextResponse.json({ ok: false, galat: hasil.galat }, { status: hasil.status });
+    }
+    const { admin, klien } = hasil;
+
+    const tipe = req.headers.get("content-type") || "";
+    if (!tipe.includes("application/json")) {
+      return NextResponse.json(
+        { ok: false, galat: "Permintaan harus berupa JSON." },
+        { status: 415 }
+      );
+    }
+
+    let body;
+    try {
+      const teks = await req.text();
+      // Dipotong SEBELUM diparse supaya badan raksasa tidak sempat masuk memori.
+      if (teks.length > 8000) {
+        return NextResponse.json({ ok: false, galat: "Permintaan terlalu besar." }, { status: 413 });
+      }
+      body = JSON.parse(teks);
+    } catch {
+      return NextResponse.json({ ok: false, galat: "Badan permintaan tidak terbaca." }, { status: 400 });
+    }
+
+    const aksi = typeof body?.aksi === "string" ? body.aksi : "";
+    if (!AKSI_TULIS.has(aksi)) {
+      return NextResponse.json(
+        { ok: false, galat: `Aksi "${aksi || "(kosong)"}" tidak dikenal.` },
+        { status: 400 }
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Daftar pendamping beserta anak-anaknya
+    // ---------------------------------------------------------
+    if (aksi === "pendamping.daftar") {
+      const { data, error } = await klien.auth.admin.listUsers({ page: 1, perPage: 200 });
+      if (error) {
+        return NextResponse.json({ ok: false, galat: terjemahGalat(error) }, { status: 400 });
+      }
+
+      const { data: anak, error: galatAnak } = await klien
+        .from("children")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      if (galatAnak) {
+        return NextResponse.json(
+          { ok: false, galat: terjemahGalat(galatAnak) },
+          { status: 400 }
+        );
+      }
+
+      // Kelompokkan anak per pemilik dalam satu lintasan.
+      const perPemilik = new Map();
+      for (const a of anak || []) {
+        const k = a.pendamping_id;
+        if (!perPemilik.has(k)) perPemilik.set(k, []);
+        perPemilik.get(k).push(a);
+      }
+
+      return NextResponse.json({
+        ok: true,
+        pendamping: (data?.users || []).map((u) => ({
+          id: u.id,
+          email: u.email,
+          dibuat: u.created_at,
+          // Ditandai supaya panel bisa memperingatkan sebelum menghapus
+          // akun yang sedang dipakai untuk masuk ke panel ini.
+          iniPengelola: u.id === admin.id,
+          anak: perPemilik.get(u.id) || [],
+        })),
+      });
+    }
+
+    // ---------------------------------------------------------
+    // Buat akun Pendamping baru
+    // ---------------------------------------------------------
+    if (aksi === "pendamping.buat") {
+      const email = String(body?.email || "").trim().toLowerCase();
+      const sandi = String(body?.sandi || "");
+
+      if (!RE_EMAIL.test(email)) {
+        return NextResponse.json({ ok: false, galat: "Alamat surel tidak sah." }, { status: 422 });
+      }
+      // Supabase menetapkan sandi minimal 6. Kita minta 8 supaya akun yang
+      // dibuat pengelola tidak lemah sejak awal.
+      if (sandi.length < 8) {
+        return NextResponse.json(
+          { ok: false, galat: "Kata sandi minimal 8 karakter." },
+          { status: 422 }
+        );
+      }
+
+      const { data, error } = await klien.auth.admin.createUser({
+        email,
+        password: sandi,
+        // Konfirmasi otomatis: akun ini dibuat oleh pengelola yang sudah
+        // berada di belakang gerbang admin, jadi menunggu surel hanya
+        // menambah langkah yang tidak perlu.
+        email_confirm: true,
+      });
+
+      if (error) {
+        return NextResponse.json({ ok: false, galat: terjemahAuth(error) }, { status: 400 });
+      }
+
+      return NextResponse.json({
+        ok: true,
+        pendamping: { id: data.user?.id, email: data.user?.email },
+        anak: [],
+      });
+    }
+
+    // ---------------------------------------------------------
+    // Hapus akun Pendamping
+    // ---------------------------------------------------------
+    if (aksi === "pendamping.hapus") {
+      const id = String(body?.id || "");
+      if (!isUuid(id)) {
+        return NextResponse.json({ ok: false, galat: "Id pengguna tidak sah." }, { status: 422 });
+      }
+      if (id === admin.id) {
+        return NextResponse.json(
+          { ok: false, galat: "Tidak bisa menghapus akun yang sedang dipakai untuk masuk." },
+          { status: 400 }
+        );
+      }
+
+      const { error } = await klien.auth.admin.deleteUser(id);
+      if (error) {
+        return NextResponse.json({ ok: false, galat: terjemahAuth(error) }, { status: 400 });
+      }
+
+      // Anak ikut terhapus oleh `on delete cascade` di tabel children, dan
+      // baris players yang tertaut hanya kehilangan tautannya (set null) -
+      // riwayat kemajuan sengaja tidak dibuang diam-diam.
+      return NextResponse.json({ ok: true });
+    }
+
+    // ---------------------------------------------------------
+    // Tambah atau ubah satu anak
+    // ---------------------------------------------------------
+    if (aksi === "anak.simpan") {
+      const id = body?.id ? String(body.id) : null;
+      const pemilik = String(body?.pendamping_id || "");
+      const nama = String(body?.nama || "").trim().replace(/\s+/g, " ");
+
+      if (!isUuid(pemilik)) {
+        return NextResponse.json(
+          { ok: false, galat: "Pemilik anak tidak sah." },
+          { status: 422 }
+        );
+      }
+      if (!nama || nama.length > MAKS_NAMA_ANAK) {
+        return NextResponse.json(
+          { ok: false, galat: `Nama anak harus 1 sampai ${MAKS_NAMA_ANAK} huruf.` },
+          { status: 422 }
+        );
+      }
+
+      if (id) {
+        // Ubah nama saja - id dan pemilik tidak pernah berubah lewat sini.
+        if (!isUuid(id)) {
+          return NextResponse.json({ ok: false, galat: "Id anak tidak sah." }, { status: 422 });
+        }
+        const { data, error } = await klien
+          .from("children")
+          .update({ nama })
+          .eq("id", id)
+          .select()
+          .maybeSingle();
+        if (error) {
+          return NextResponse.json({ ok: false, galat: terjemahGalat(error) }, { status: 400 });
+        }
+        if (!data) {
+          return NextResponse.json(
+            { ok: false, galat: "Anak itu tidak ditemukan." },
+            { status: 404 }
+          );
+        }
+        return NextResponse.json({ ok: true, anak: data });
+      }
+
+      // Baru - periksa batas dan nama kembar dulu.
+      const { count, error: galatHitung } = await klien
+        .from("children")
+        .select("id", { count: "exact", head: true })
+        .eq("pendamping_id", pemilik);
+      if (galatHitung) {
+        return NextResponse.json({ ok: false, galat: terjemahGalat(galatHitung) }, { status: 400 });
+      }
+      if ((count ?? 0) >= MAKS_ANAK) {
+        return NextResponse.json(
+          { ok: false, galat: `Satu pendamping maksimal ${MAKS_ANAK} anak.` },
+          { status: 422 }
+        );
+      }
+
+      const { data, error } = await klien
+        .from("children")
+        .insert({ pendamping_id: pemilik, nama })
+        .select()
+        .single();
+
+      if (error) {
+        // 23505 = pelanggaran unik: nama kembar untuk pendamping yang sama.
+        if (error.code === "23505") {
+          return NextResponse.json(
+            { ok: false, galat: `Pendamping ini sudah punya anak bernama ${nama}.` },
+            { status: 409 }
+          );
+        }
+        return NextResponse.json({ ok: false, galat: terjemahGalat(error) }, { status: 400 });
+      }
+
+      return NextResponse.json({ ok: true, anak: data }, { status: 201 });
+    }
+
+    // ---------------------------------------------------------
+    // Hapus satu anak
+    // ---------------------------------------------------------
+    if (aksi === "anak.hapus") {
+      const id = String(body?.id || "");
+      if (!isUuid(id)) {
+        return NextResponse.json({ ok: false, galat: "Id anak tidak sah." }, { status: 422 });
+      }
+
+      const { data, error } = await klien
+        .from("children")
+        .delete()
+        .eq("id", id)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        return NextResponse.json({ ok: false, galat: terjemahGalat(error) }, { status: 400 });
+      }
+      if (!data) {
+        return NextResponse.json(
+          { ok: false, galat: "Anak itu tidak ditemukan." },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({ ok: true });
+    }
+
+    return NextResponse.json({ ok: false, galat: "Aksi tidak dikenal." }, { status: 400 });
+  } catch (err) {
+    console.error("[admin] galat tak terduga (POST):", err?.message || err);
+    return NextResponse.json(
+      { ok: false, galat: "Terjadi kesalahan di server. Coba lagi." },
+      { status: 500 }
+    );
+  }
+}
+
+/** Terjemahkan pesan galat autentikasi Supabase ke bahasa yang jelas. */
+function terjemahAuth(error) {
+  const m = (error?.message || "").toLowerCase();
+  if (m.includes("already registered") || m.includes("already exists"))
+    return "Alamat surel ini sudah terdaftar.";
+  if (m.includes("password")) return "Kata sandi tidak memenuhi syarat Supabase.";
+  if (m.includes("rate limit") || m.includes("too many"))
+    return "Terlalu banyak permintaan. Coba lagi sebentar.";
+  if (m.includes("user not found")) return "Pengguna tidak ditemukan.";
+  return error?.message || "Gagal memproses permintaan.";
 }
 
 /** Terjemahkan kode galat Supabase ke kalimat yang bisa ditindaklanjuti. */

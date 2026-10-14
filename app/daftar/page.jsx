@@ -11,6 +11,7 @@ import { unlockAudio, play } from "@/lib/sfx";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 import { load } from "@/lib/store";
 import { lepasProfil, pasangProfil } from "@/lib/profil";
+import { sinkronMasuk } from "@/lib/syncAnak";
 
 /**
  * Halaman Daftar / Masuk.
@@ -47,6 +48,14 @@ export default function HalamanDaftar() {
     // posisi teratas dan ikut tampil di akun yang baru masuk - data anak
     // bocor antar akun Pendamping.
     pasangProfil(user);
+
+    // Sesudah akun menempel, ambil kabar terbaru dari awan: anak yang
+    // ditambahkan atau dihapus pengelola dari perangkat lain ikut terbawa.
+    // Sengaja tidak ditunggu - perangkat tetap bisa dipakai bila jaringan
+    // sedang bermasalah, dan sinkronisasi dicoba lagi pada pemasangan
+    // berikutnya. Kegagalannya juga tidak pernah menghapus anak apa pun
+    // (lihat catatan di lib/syncAnak.js).
+    sinkronMasuk().catch(() => {});
   }
 
   function tandaiKeluar() {

@@ -31,6 +31,7 @@ import { touchStreak } from "@/lib/store";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 import FeedbackForm from "@/components/FeedbackForm";
 import { daftarAnak, tambahAnak, pilihAnak, lepasProfil, mulaiTamu, MAKS_ANAK } from "@/lib/profil";
+import { sampenAnak, sinkronMasuk } from "@/lib/syncAnak";
 import { moodKostum, ISLANDS } from "@/lib/gameData";
 
 // ============================================================
@@ -228,6 +229,22 @@ export default function LandingPage() {
         })
         .catch(() => {});
     }
+
+    // Bila perangkat ini sudah menempel pada sebuah akun Pendamping, ambil
+    // kabar terbaru daftar anaknya dari awan. Tanpa langkah ini, anak yang
+    // ditambah atau dihapus pengelola lewat panel admin tidak akan pernah
+    // sampai ke halaman ini - sebab setelah sesi tersimpan, keluarga tidak
+    // lagi membuka /daftar sama sekali.
+    //
+    // Sengaja tidak ditunggu dan kegagalannya diabaikan: perangkat tetap
+    // bisa dipakai walau jaringan bermasalah, dan sinkronisasi tidak pernah
+    // menghapus anak apa pun bila jawaban dari awan kosong.
+    try {
+      const awal = JSON.parse(window.localStorage.getItem("zippyverse_save_v1") || "{}");
+      if (awal?.pendamping?.id) {
+        sinkronMasuk().catch(() => {});
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -292,6 +309,12 @@ export default function LandingPage() {
       setGalatNama(r.alasan || "Nama belum bisa disimpan.");
       return;
     }
+    // Anak baru wajib sampai ke awan juga, supaya panel admin yang dibuka
+    // dari perangkat lain bisa melihatnya. Sengaja TIDAK ditunggu: bila
+    // Supabase lambat atau sedang tidak terjangkau, anak tetap terdaftar di
+    // perangkat ini dan orang tua tetap bisa lanjut bermain. Kegagalan
+    // sinkronisasi dicoba lagi pada pemasangan akun berikutnya.
+    sampenAnak().catch(() => {});
     unlockAudio();
     play("levelup");
     pilihAnak(r.id);
