@@ -1,0 +1,33 @@
+{
+  "name": "zippyverse",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ZippyVerse - Petualangan di Planet Luminara. Game edukasi untuk anak SD dengan maskot Zippy.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/*.test.mjs\"",
+    "audio:teks": "node scripts/kumpulTeks.mjs",
+    "audio:generate": "py scripts/generateAudio.py",
+    "audio": "node scripts/kumpulTeks.mjs && py scripts/generateAudio.py"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@supabase/supabase-js": "^2.47.10",
+    "framer-motion": "^11.15.0",
+    "lucide-react": "^0.469.0",
+    "next": "^15.1.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.27",
+    "postcss": "^8.4.49",
+    "sharp": "^0.35.5",
+    "tailwindcss": "^3.4.17"
+  }
+}
