@@ -349,6 +349,13 @@ export default function LandingPage() {
     setAnak([]);
     setNickname("");
     setAdaSimpanan(false);
+    // Pintu Panel Admin ikut ditutup. Tanpa baris ini, tombolnya tertinggal
+    // di navbar sampai halaman dimuat ulang - sebab `bolehAdmin` hanya pernah
+    // diisi saat komponen dipasang, dan tidak ada yang menulis ulang nilainya
+    // begitu akun dilepas. Pada layar yang tidak dimuat ulang (persis yang
+    // terjadi setelah menekan Keluar), pengunjung masih melihat tombol
+    // pengelola tanpa akun apa pun yang tertaut di belakangnya.
+    setBolehAdmin(false);
 
     // 2. Putus sesi Supabase. Bila langkah ini ditiadakan, token di
     //    `sb-...-auth-token` tetap hidup dan halaman /daftar akan
@@ -400,10 +407,17 @@ export default function LandingPage() {
 
           <div className="flex flex-wrap items-center justify-end gap-2">
             {/* Menu Admin Panel: berdiri di SEBELAH KIRI Dasbor Orang Tua,
-                dan hanya muncul untuk akun berperan pengelola. Dasbor Orang
-                Tua berisi ringkasan perkembangan (baca-saja), sedangkan menu
-                ini pintu ke ruang kerja pengelola. */}
-            {bolehAdmin && (
+                dan hanya muncul untuk akun berperan pengelola yang SEDANG
+                MENEMPEL di perangkat ini. Syaratnya dua, bukan satu:
+
+                  1. `pendamping`  ada akun yang tertaut. Tanpa akun, tidak
+                     ada token sesi, dan /admin hanya akan berhenti di
+                     gerbang masuk - menampilkan pintunya hanya membingungkan.
+                  2. `bolehAdmin`  peran pengelola pada sesi itu.
+
+                Dasbor Orang Tua berisi ringkasan perkembangan (baca-saja),
+                sedangkan menu ini pintu ke ruang kerja pengelola. */}
+            {bolehAdmin && pendamping && (
               <button
                 onClick={() => {
                   unlockAudio();

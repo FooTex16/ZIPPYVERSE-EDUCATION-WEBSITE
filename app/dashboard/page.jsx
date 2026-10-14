@@ -326,8 +326,13 @@ export default function DashboardPage() {
             Tautan ini disembunyikan bagi seluruh akun yang bukan pengelola.
             Menyembunyikan memang bukan keamanan - orang masih bisa mengetik
             /admin langsung - tapi menampilkan tombol yang tidak bisa dipakai
-            hanya membingungkan, dan membuat anak penasaran menekan-nekannya. */}
-        {bolehAdmin && (
+            hanya membingungkan, dan membuat anak penasaran menekan-nekannya.
+
+            Syaratnya dua, bukan satu: peran pengelola DAN akun yang masih
+            menempel di perangkat. `bolehAdmin` hanya pernah diisi saat
+            komponen dipasang, jadi tanpa syarat kedua tautannya tertinggal
+            setelah keluar - persis keluhan yang dilaporkan pada halaman utama. */}
+        {bolehAdmin && save?.pendamping && (
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
