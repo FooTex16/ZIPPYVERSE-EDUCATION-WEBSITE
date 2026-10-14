@@ -49,6 +49,7 @@ const MAKS_NAMA = 18;
 
 export default function AdminAkun() {
   const [daftar, setDaftar] = useState(null); // null = masih memuat
+  const [daftarRusak, setDaftarRusak] = useState(false);
   const [pesan, setPesan] = useState("");
   const [galat, setGalat] = useState("");
   const [sibuk, setSibuk] = useState(false);
@@ -83,9 +84,15 @@ export default function AdminAkun() {
     setSibuk(false);
     if (!r.ok) {
       setDaftar([]);
+      // Daftar GAGAL dimuat, bukan kosong. Keduanya sengaja dibedakan:
+      // bila daftar gagal lalu layar tetap menulis "Belum ada akun
+      // Pendamping", pengelola bisa membacanya sebagai "tidak ada akun di
+      // database" lalu membuat atau menghapus akun di atas dasar yang salah.
+      setDaftarRusak(true);
       galangkan(r.galat || "Gagal memuat daftar akun.");
       return;
     }
+    setDaftarRusak(false);
     setDaftar(r.pendamping || []);
     setGalat("");
   }
@@ -207,11 +214,11 @@ export default function AdminAkun() {
 
       {/* Ringkasan */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Ringkas label="Akun Pendamping" nilai={daftar.length} />
-        <Ringkas label="Total Anak" nilai={totalAnak} />
+        <Ringkas label="Akun Pendamping" nilai={daftarRusak ? "—" : daftar.length} />
+        <Ringkas label="Total Anak" nilai={daftarRusak ? "—" : totalAnak} />
         <Ringkas
           label="Anak per Akun"
-          nilai={daftar.length ? (totalAnak / daftar.length).toFixed(1) : "0"}
+          nilai={daftarRusak || !daftar.length ? "—" : (totalAnak / daftar.length).toFixed(1)}
         />
         <Ringkas label="Batas Anak" nilai={`${MAKS_ANAK} / akun`} />
       </div>
@@ -275,7 +282,20 @@ export default function AdminAkun() {
 
       {/* Daftar pendamping */}
       <Kotak judul="Daftar Pendamping">
-        {daftar.length === 0 && (
+        {daftarRusak && (
+          <div className="rounded-2xl border-2 border-red-300 bg-red-50 p-3">
+            <p className="text-sm font-black text-red-800">
+              Daftar tidak bisa dimuat.
+            </p>
+            <p className="mt-1 text-[11px] font-bold leading-relaxed text-red-700">
+              Karena itu layar ini TIDAK menampilkan jumlah akun - bukan berarti
+              akunnya tidak ada. Pesan penyebabnya ada di pita merah di atas.
+              Memuat ulang setelah penyebabnya beres akan mengisi daftar ini.
+            </p>
+          </div>
+        )}
+
+        {!daftarRusak && daftar.length === 0 && (
           <p className="text-sm font-bold text-zippy-navy/60">
             Belum ada akun Pendamping. Buat yang pertama lewat tombol di atas.
           </p>
