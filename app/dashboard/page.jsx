@@ -48,6 +48,7 @@ export default function DashboardPage() {
   const [save, setSave] = useState(null);
   const [rows, setRows] = useState([]);
   const [dbStatus, setDbStatus] = useState("menunggu");
+  const [bolehAdmin, setBolehAdmin] = useState(false);
 
   useEffect(() => {
     const s = load();
@@ -59,6 +60,20 @@ export default function DashboardPage() {
         return;
       }
       try {
+        // Pintu masuk Panel Admin hanya diberikan kepada akun berperan
+        // pengelola. Pemeriksaan memakai `app_metadata.role` - bukan
+        // `user_metadata` - karena yang pertama tidak bisa diubah dari
+        // peramban, sehingga tidak ada anak yang bisa memunculkan tombol
+        // ini lewat Alat Pengembang.
+        //
+        // Tautan ini hanyalah kebijakan TAMPILAN. Pengaman sesungguhnya ada
+        // di server: /api/admin menolak token yang perannya bukan pengelola,
+        // jadi walau seseorang mengetik /admin secara langsung, ia tetap
+        // berhenti di gerbang masuk.
+        const { data: sesi } = await supabase.auth.getSession();
+        const peran = sesi?.session?.user?.app_metadata?.role;
+        setBolehAdmin(peran === "admin");
+
         let pid = s.playerId;
         if (!pid) {
           const { data } = await supabase
@@ -306,21 +321,36 @@ export default function DashboardPage() {
         </div>
 
         {/* Pintu masuk Panel Admin. Sengaja diletakkan di dasbor orang tua,
-            bukan di menu anak, karena isinya mengubah data pemain. */}
-        <Link
-          href="/admin"
-          className="mt-6 flex items-center gap-3 rounded-3xl border-2 border-dashed border-white/30 bg-white/8 px-4 py-3 text-white/80 transition hover:border-white/60 hover:bg-white/12 active:scale-[0.99]"
-        >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15">
-            <Settings2 className="h-5 w-5" strokeWidth={2.8} />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-sm font-black">Panel Admin</span>
-            <span className="block text-xs font-semibold text-white/55">
-              Kelola data pemain, tabel Supabase, dan pengaturan konten. Dikunci PIN.
-            </span>
-          </span>
-        </Link>
+            bukan di menu anak, karena isinya mengubah data pemain.
+
+            Tautan ini disembunyikan bagi seluruh akun yang bukan pengelola.
+            Menyembunyikan memang bukan keamanan - orang masih bisa mengetik
+            /admin langsung - tapi menampilkan tombol yang tidak bisa dipakai
+            hanya membingungkan, dan membuat anak penasaran menekan-nekannya. */}
+        {bolehAdmin && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            whileHover={{ scale: 1.02, y: -4 }}
+            className="mt-6"
+          >
+            <Link
+              href="/admin"
+              className="flex items-center gap-3 rounded-3xl border-2 border-dashed border-zippy-yellow/60 bg-zippy-yellow/12 px-4 py-3 text-white transition hover:border-zippy-yellow hover:bg-zippy-yellow/22 active:scale-[0.99]"
+            >
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-zippy-yellow text-zippy-navy">
+                <Settings2 className="h-5 w-5" strokeWidth={2.8} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-black">Panel Admin</span>
+                <span className="block text-xs font-semibold text-white/65">
+                  Kelola data pemain, tabel Supabase, dan pengaturan konten.
+                </span>
+              </span>
+            </Link>
+          </motion.div>
+        )}
 
         <div className="mt-8 flex justify-center">
           <Zippy size={110} mood="membaca" speech="Terus dukung Zippy ya! Kamu luar biasa." />
