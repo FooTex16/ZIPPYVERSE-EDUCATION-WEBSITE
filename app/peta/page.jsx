@@ -115,9 +115,27 @@ export default function PetaPage() {
   }, [save]);
 
   useEffect(() => {
-    setSave(touchStreak());
+    const s = touchStreak();
     unlockAudio();
-  }, []);
+
+    // Pengaman akhir: pemilik akun yang belum memilih anak TIDAK BOLEH sampai
+    // melihat peta. Blob aktif pada saat itu masih berisi simpanan TAMU dari
+    // percobaan sebelumnya, sehingga peta menampilkan akun tamu seolah-olah
+    // si pemilik tidak pernah mendaftarkan anak sama sekali.
+    //
+    // Bawa ke halaman awal, tempat kartu akun dan daftar anak menunggu.
+    // Tamu (tanpa `pendamping`) dibiarkan lewat - mereka memang berhak
+    // memainkan Pulau Perkenalan.
+    if (s.pendamping && !s.anakAktif) {
+      router.replace("/");
+      return;
+    }
+
+    setSave(s);
+    // `router` dari `useRouter()` stabil selama berada di halaman yang sama,
+    // jadi efek ini tetap hanya berjalan sekali seperti sebelumnya. Dimasukkan
+    // ke daftar dependensi sekadar untuk memuaskan `react-hooks/exhaustive-deps`.
+  }, [router]);
 
   const equipped = useMemo(() => {
     if (!save) return COSTUMES[0];

@@ -26,10 +26,10 @@ import Link from "next/link";
 import SpaceBackdrop from "@/components/SpaceBackdrop";
 import Zippy from "@/components/Zippy";
 import { unlockAudio, play } from "@/lib/sfx";
-import { touchStreak, emptySave } from "@/lib/store";
+import { touchStreak } from "@/lib/store";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 import FeedbackForm from "@/components/FeedbackForm";
-import { daftarAnak, tambahAnak, pilihAnak, lepasProfil, MAKS_ANAK } from "@/lib/profil";
+import { daftarAnak, tambahAnak, pilihAnak, lepasProfil, mulaiTamu, MAKS_ANAK } from "@/lib/profil";
 import { moodKostum, ISLANDS } from "@/lib/gameData";
 
 // ============================================================
@@ -240,41 +240,15 @@ export default function LandingPage() {
   /**
    * Mode tamu: cukup nama panggilan, tersimpan hanya di perangkat ini.
    *
-   * Simpanan yang dibawa TIDAK BOLEH menyimpan jejak akun. Bila masih ada
-   * (sisa akun yang belum sempat dibersihkan), simpanan itu dianggap milik
-   * anak dan dibuang SELURUHNYA, bukan sekadar disembunyikan - tamu harus
-   * memulai dari nol. Simpanan tamu yang murni (tanpa jejak) tetap
-   * dipertahankan, supaya tamu yang kembali tidak kehilangan kemajuannya.
+   * Seluruh keputusan apa yang boleh dibuang dan apa yang harus
+   * dipertahankan ada di `mulaiTamu()` (lib/profil.js) supaya bisa diuji
+   * langsung tanpa harus membuka peramban.
    */
   function mulai(e) {
     e.preventDefault();
     unlockAudio();
     play("levelup");
-    const name = nickname.trim() || "Penjelajah";
-    try {
-      const KEY = "zippyverse_save_v1";
-      const cur = JSON.parse(window.localStorage.getItem(KEY) || "{}");
-
-      // Jejak akun = salah satu dari empat kunci akun masih terisi. Kehadiran
-      // salah satunya berarti blob aktif di perangkat ini adalah milik anak.
-      const jejak =
-        Boolean(cur.pendamping) ||
-        Boolean(cur.anakAktif) ||
-        (Array.isArray(cur.anak) && cur.anak.length > 0) ||
-        Object.keys(cur.simpanan || {}).length > 0;
-
-      window.localStorage.setItem(
-        KEY,
-        JSON.stringify({
-          ...(jejak ? emptySave() : cur),
-          pendamping: null,
-          anak: [],
-          anakAktif: null,
-          simpanan: {},
-          nickname: name,
-        })
-      );
-    } catch {}
+    mulaiTamu(nickname);
     touchStreak();
     router.push("/peta");
   }

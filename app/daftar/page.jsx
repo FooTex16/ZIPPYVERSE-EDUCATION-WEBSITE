@@ -9,7 +9,7 @@ import SpaceBackdrop from "@/components/SpaceBackdrop";
 import Zippy from "@/components/Zippy";
 import { unlockAudio, play } from "@/lib/sfx";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
-import { update } from "@/lib/store";
+import { update, load } from "@/lib/store";
 import { lepasProfil } from "@/lib/profil";
 
 /**
@@ -132,7 +132,11 @@ export default function HalamanDaftar() {
             jenis: "sukses",
             teks: "Akun keluarga berhasil dibuat. Selamat datang!",
           });
-          setTimeout(() => router.push("/peta"), 900);
+          // Buka HALAMAN AWAL, bukan /peta. Di halaman awal akun langsung
+          // terlihat: alamat surel, daftar anak, dan tombol tambah anak.
+          // Ke /peta justru akan menampilkan blob tamu yang masih tersimpan
+          // dari percobaan sebelumnya, seolah akunnya belum pernah ada.
+          setTimeout(() => router.push("/"), 900);
         } else {
           setPesan({
             jenis: "sukses",
@@ -152,7 +156,12 @@ export default function HalamanDaftar() {
         play("yeay");
         tandaiMasuk(data?.session?.user);
         setPesan({ jenis: "sukses", teks: "Berhasil masuk. Membuka ZippyVerse..." });
-        setTimeout(() => router.push("/peta"), 900);
+        // Ke HALAMAN AWAL, bukan /peta. Orang tua baru masuk harus langsung
+        // melihat kartu akunnya beserta daftar anak. Bila langsung ke /peta,
+        // blob aktif masih berisi simpanan TAMU dari sebelum masuk, sehingga
+        // peta menampilkan akun tamu - persis keluhan yang memicu perbaikan
+        // ini. Dari halaman awal mereka memilih nama anak lebih dulu.
+        setTimeout(() => router.push("/"), 900);
       }
     } catch (err) {
       setPesan({ jenis: "galat", teks: bahasaIndonesia(err?.message) });
@@ -251,7 +260,11 @@ export default function HalamanDaftar() {
                 <button
                   onClick={() => {
                     unlockAudio();
-                    router.push("/peta");
+                    // Tanpa anak yang sedang aktif, /peta akan menampilkan
+                    // blob yang tersisa dari percobaan mode tamu. Bawa ke
+                    // halaman awal supaya nama anak dipilih lebih dulu.
+                    const s = load();
+                    router.push(s.pendamping && s.anakAktif ? "/peta" : "/");
                   }}
                   className="btn-pop flex items-center gap-1.5 rounded-xl bg-zippy-yellow px-4 py-2 text-sm font-black text-zippy-navy"
                 >
