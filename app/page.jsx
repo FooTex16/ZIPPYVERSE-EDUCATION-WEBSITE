@@ -26,8 +26,10 @@ import Link from "next/link";
 import SpaceBackdrop from "@/components/SpaceBackdrop";
 import Zippy from "@/components/Zippy";
 import { unlockAudio, play } from "@/lib/sfx";
-import { touchStreak } from "@/lib/store";
-import { daftarAnak, tambahAnak, pilihAnak, MAKS_ANAK } from "@/lib/profil";
+import { touchStreak, emptySave } from "@/lib/store";
+import { supabase, supabaseEnabled } from "@/lib/supabase";
+import FeedbackForm from "@/components/FeedbackForm";
+import { daftarAnak, tambahAnak, pilihAnak, lepasProfil, MAKS_ANAK } from "@/lib/profil";
 import { moodKostum, ISLANDS } from "@/lib/gameData";
 
 // ============================================================
@@ -235,18 +237,45 @@ export default function LandingPage() {
     setBukaNama(true);
   }
 
-  /** Mode tamu: cukup nama panggilan, tersimpan hanya di perangkat ini. */
+  /**
+   * Mode tamu: cukup nama panggilan, tersimpan hanya di perangkat ini.
+   *
+   * Simpanan yang dibawa TIDAK BOLEH menyimpan jejak akun. Bila masih ada
+   * (sisa akun yang belum sempat dibersihkan), simpanan itu dianggap milik
+   * anak dan dibuang SELURUHNYA, bukan sekadar disembunyikan - tamu harus
+   * memulai dari nol. Simpanan tamu yang murni (tanpa jejak) tetap
+   * dipertahankan, supaya tamu yang kembali tidak kehilangan kemajuannya.
+   */
   function mulai(e) {
     e.preventDefault();
     unlockAudio();
     play("levelup");
     const name = nickname.trim() || "Penjelajah";
-    touchStreak();
     try {
       const KEY = "zippyverse_save_v1";
       const cur = JSON.parse(window.localStorage.getItem(KEY) || "{}");
-      window.localStorage.setItem(KEY, JSON.stringify({ ...cur, nickname: name }));
+
+      // Jejak akun = salah satu dari empat kunci akun masih terisi. Kehadiran
+      // salah satunya berarti blob aktif di perangkat ini adalah milik anak.
+      const jejak =
+        Boolean(cur.pendamping) ||
+        Boolean(cur.anakAktif) ||
+        (Array.isArray(cur.anak) && cur.anak.length > 0) ||
+        Object.keys(cur.simpanan || {}).length > 0;
+
+      window.localStorage.setItem(
+        KEY,
+        JSON.stringify({
+          ...(jejak ? emptySave() : cur),
+          pendamping: null,
+          anak: [],
+          anakAktif: null,
+          simpanan: {},
+          nickname: name,
+        })
+      );
     } catch {}
+    touchStreak();
     router.push("/peta");
   }
 
@@ -273,6 +302,53 @@ export default function LandingPage() {
     touchStreak();
     router.push("/peta");
   }
+
+  /**
+   * Keluar dari Akun Pendamping.
+   *
+   * Dua hal harus diputus sekaligus, dan dulu hanya yang pertama yang
+   * dilakukan:
+   *
+   *   1. Ikatan PERANGKAT dengan akun (sakelar `pendamping`, daftar anak,
+   *      gudang simpanan, serta simpanan aktif milik anak).
+   *   2. SESI Supabase. Bila sesi dibiarkan, token di `sb-...-auth-token`
+   *      tetap hidup, lalu halaman /daftar akan menyambungkan akun itu
+   *      kembali sendiri lewat `tandaiMasuk()` begitu dibuka. Akibatnya
+   *      akun seolah-olah "hidup lagi" sesudah dikeluarkan - persis
+   *      keluhan yang membuat perbaikan ini ditulis.
+   */
+  async function keluar() {
+    unlockAudio();
+    play("pop");
+
+    // 1. Lepas ikatan perangkat lebih dulu supaya UI langsung berubah bahkan
+    //    sebelum panggilan jaringan selesai. Tidak ada pendengar
+    //    onAuthStateChange di proyek ini, jadi tidak ada yang akan menulis
+    //    ulang `pendamping` sesudah ini.
+    lepasProfil();
+    setPendamping(null);
+    setAnak([]);
+    setNickname("");
+    setAdaSimpanan(false);
+
+    // 2. Putus sesi Supabase. Bila langkah ini ditiadakan, token di
+    //    `sb-...-auth-token` tetap hidup dan halaman /daftar akan
+    //    menyambungkan akun itu kembali sendiri lewat `tandaiMasuk()`.
+    if (supabaseEnabled) {
+      try {
+        await supabase.auth.signOut();
+      } catch {}
+    }
+  }
+
+  /**
+   * Sudah masuk akun Pendamping atau belum.
+   *
+   * Dipakai di banyak tempat untuk memilih isi tampilan: pengunjung yang
+   * sudah masuk TIDAK lagi ditawari "Daftar / Masuk" - tawaran itu sudah
+   * tidak relevan dan hanya menimbulkan keraguan.
+   */
+  const sudahMasuk = Boolean(pendamping);
 
   return (
     <main className="space-bg relative min-h-screen overflow-x-clip">
@@ -317,15 +393,32 @@ export default function LandingPage() {
                 Dasbor Orang Tua
               </span>
             </button>
-            <button
-              onClick={() => {
-                unlockAudio();
-                router.push("/daftar");
-              }}
-              className="rounded-full bg-zippy-yellow px-4 py-2 text-sm font-black text-zippy-navy transition hover:brightness-105"
-            >
-              {ready && adaSimpanan ? "Masuk" : "Daftar"}
-            </button>
+            {sudahMasuk ? (
+              /* Sudah masuk Akun Pendamping: tawaran "Daftar / Masuk" sudah
+                 tidak relevan. Yang ditampilkan justru siapa yang sedang
+                 masuk, dan cara keluar. */
+              <>
+                <span className="hidden max-w-[min(46vw,15rem)] truncate rounded-full bg-white/12 px-3 py-2 text-xs font-black text-zippy-mint sm:inline-block">
+                  {pendamping.email}
+                </span>
+                <button
+                  onClick={keluar}
+                  className="rounded-full border-2 border-white/35 px-4 py-2 text-sm font-black text-white transition hover:border-white/70 hover:bg-white/10"
+                >
+                  Keluar
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  unlockAudio();
+                  router.push("/daftar");
+                }}
+                className="rounded-full bg-zippy-yellow px-4 py-2 text-sm font-black text-zippy-navy transition hover:brightness-105"
+              >
+                {ready && adaSimpanan ? "Masuk" : "Daftar"}
+              </button>
+            )}
           </div>
         </nav>
 
@@ -358,30 +451,51 @@ export default function LandingPage() {
                 ujung, anak menyelesaikan misi 3 menit untuk membuka dunia baru.
               </p>
 
-              {/* Dua jalan: main sekarang (tamu) atau daftar (simpan progres). */}
+              {/* Pengunjung yang sudah masuk hanya diberi SATU jalan: bermain.
+                  Tidak ada lagi "Daftar / Masuk" (sudah masuk) dan tidak ada
+                  "Lanjutkan Bermain" (nama pemainnya belum dipilih - justru
+                  pemilihan itulah yang dimulai lewat tombol ini). */}
               <div className="mt-8 flex flex-wrap gap-3">
                 <motion.button
+                  whileHover={{ scale: 1.03, y: -2 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={bukaPanel}
                   className="btn-pop flex items-center gap-2 rounded-2xl bg-zippy-yellow px-6 py-3.5 text-base font-black text-zippy-navy sm:text-lg"
                 >
-                  {ready && adaSimpanan ? "Lanjutkan Bermain" : "Mulai Bermain"}
+                  {sudahMasuk ? "Mulai Bermain" : ready && adaSimpanan ? "Lanjutkan Bermain" : "Mulai Bermain"}
                   <ArrowRight className="h-5 w-5" strokeWidth={3} />
                 </motion.button>
 
-                <Link
-                  href="/daftar"
-                  onClick={() => unlockAudio()}
-                  className="flex items-center gap-2 rounded-2xl border-4 border-white/35 px-6 py-3 text-base font-black text-white transition hover:border-white/60 hover:bg-white/10 sm:text-lg"
-                >
-                  Daftar / Masuk
-                </Link>
+                {!sudahMasuk && (
+                  <motion.button
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => {
+                      unlockAudio();
+                      router.push("/daftar");
+                    }}
+                    className="flex items-center gap-2 rounded-2xl border-4 border-white/35 px-6 py-3 text-base font-black text-white transition hover:border-white/60 hover:bg-white/10 sm:text-lg"
+                  >
+                    Daftar / Masuk
+                  </motion.button>
+                )}
               </div>
 
               <p className="mt-3 max-w-md text-sm font-semibold text-white/55">
-                <span className="text-zippy-mint">Pulau Perkenalan</span> terbuka
-                untuk siapa pun tanpa daftar. Daftar nanti supaya lima pulau
-                lainnya terbuka dan progres tersimpan di semua perangkat.
+                {sudahMasuk ? (
+                  <>
+                    <span className="text-zippy-mint">Pilih nama anak</span> di
+                    bawah, lalu petualangan langsung dimulai. Kemajuan tiap anak
+                    tersimpan terpisah.
+                  </>
+                ) : (
+                  <>
+                    <span className="text-zippy-mint">Pulau Perkenalan</span>{" "}
+                    terbuka untuk siapa pun tanpa daftar. Daftar nanti supaya
+                    lima pulau lainnya terbuka dan progres tersimpan di semua
+                    perangkat.
+                  </>
+                )}
               </p>
             </motion.div>
           </div>
@@ -410,6 +524,154 @@ export default function LandingPage() {
             </motion.div>
           </motion.div>
         </div>
+
+        {/* --------------------------------------- Akun Pendamping (masuk) */}
+        {sudahMasuk && (
+          <section className="mt-12 sm:mt-16" id="akun">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="relative overflow-hidden rounded-[30px] border-4 border-zippy-teal bg-white/10 p-5 backdrop-blur sm:p-7"
+            >
+              {/* Garis dekoratif atas - memberi kesan "kartu", bukan kotak datar */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 top-0 h-1.5"
+                style={{
+                  background:
+                    "linear-gradient(90deg, #2AA5A0, #FFC93C, #B2D8D5)",
+                }}
+              />
+
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-zippy-teal font-display text-2xl font-black text-white shadow-pop">
+                    {(pendamping.email || "?").charAt(0).toUpperCase()}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-zippy-mint">
+                      Akun Pendamping
+                    </p>
+                    <p className="truncate font-display text-lg font-bold text-white">
+                      {pendamping.email}
+                    </p>
+                    <p className="text-xs font-bold text-white/55">
+                      {anak.length === 0
+                        ? "Belum ada anak terdaftar"
+                        : `${anak.length} anak terdaftar`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={bukaPanel}
+                    className="rounded-full bg-zippy-yellow px-4 py-2.5 text-sm font-black text-zippy-navy transition hover:brightness-105"
+                  >
+                    + Tambah Anak
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={keluar}
+                    className="rounded-full border-2 border-white/35 px-4 py-2.5 text-sm font-black text-white transition hover:border-white/70 hover:bg-white/10"
+                  >
+                    Keluar
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Daftar anak - inti dari halaman ini */}
+              <div className="mt-6">
+                <h3 className="font-display text-lg font-bold text-white sm:text-xl">
+                  Siapa yang mau bermain hari ini?
+                </h3>
+                <p className="mt-1 text-sm font-semibold text-white/60">
+                  Petik nama, lalu petualangan langsung dimulai. Tidak perlu
+                  kata sandi.
+                </p>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {anak.map((a, i) => (
+                    <motion.button
+                      key={a.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.25 + i * 0.06 }}
+                      whileHover={{ scale: 1.05, y: -6 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => mulaiSebagai(a.id)}
+                      className="group flex items-center gap-2.5 rounded-2xl border-4 border-zippy-teal/60 bg-white px-3 py-3 text-left transition hover:border-zippy-teal hover:bg-zippy-mint/30"
+                    >
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zippy-teal font-display text-base font-black text-white transition group-hover:bg-zippy-yellow group-hover:text-zippy-navy">
+                        {a.nama.charAt(0).toUpperCase()}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-black text-zippy-navy">
+                        {a.nama}
+                      </span>
+                    </motion.button>
+                  ))}
+
+                  {/* Kotak tambah - selalu ada selama belum mencapai batas */}
+                  {anak.length < MAKS_ANAK && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.25 + anak.length * 0.06 }}
+                      whileHover={{ scale: 1.05, y: -6 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={bukaPanel}
+                      className="grid place-items-center gap-1 rounded-2xl border-4 border-dashed border-white/25 px-3 py-3 text-center text-white/60 transition hover:border-zippy-yellow hover:bg-zippy-yellow/10 hover:text-zippy-yellow"
+                    >
+                      <span className="text-2xl leading-none font-black">+</span>
+                      <span className="text-xs font-black">Tambah anak</span>
+                    </motion.button>
+                  )}
+                </div>
+              </div>
+
+              {/* Keadaan kosong: cara mendaftarkan anak pertama */}
+              {anak.length === 0 && (
+                <div className="mt-5 rounded-2xl border-2 border-zippy-mint/30 bg-zippy-mint/10 p-4">
+                  <p className="font-display text-sm font-bold text-zippy-mint">
+                    Cara mendaftarkan anak
+                  </p>
+                  <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs font-semibold leading-relaxed text-white/70">
+                    <li>Tekan tombol <b className="text-white">+ Tambah Anak</b>.</li>
+                    <li>Ketik nama anak, misalnya <b className="text-white">Deka</b>.</li>
+                    <li>
+                      Selesai. Selanjutnya anak cukup memetik namanya sendiri
+                      setiap kali bermain.
+                    </li>
+                    <li>
+                      Untuk anak berikutnya, ulangi langkah yang sama — hingga{" "}
+                      <b className="text-white">{MAKS_ANAK} profil</b> dalam satu
+                      akun.
+                    </li>
+                  </ol>
+                </div>
+              )}
+
+              <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-bold text-white/50">
+                <span className="inline-flex items-center gap-1">
+                  <Check className="h-3.5 w-3.5 text-zippy-mint" strokeWidth={3.5} />
+                  Kemajuan tiap anak terpisah
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Check className="h-3.5 w-3.5 text-zippy-mint" strokeWidth={3.5} />
+                  Sesi tetap tersimpan
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Check className="h-3.5 w-3.5 text-zippy-mint" strokeWidth={3.5} />
+                  Tidak perlu kata sandi anak
+                </span>
+              </p>
+            </motion.div>
+          </section>
+        )}
 
         {/* ------------------------------------------------- Kenapa ada Zippy */}
         <section className="mt-16 sm:mt-20">
@@ -443,6 +705,8 @@ export default function LandingPage() {
                   key={label}
                   initial={{ opacity: 0, y: 16 }}
                   whileInView={{ opacity: 1, y: 0 }}
+                  whileHover={{ scale: 1.04, y: -8 }}
+                  whileTap={{ scale: 0.97 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
                   className={`rounded-3xl border-4 p-4 ${
@@ -484,9 +748,11 @@ export default function LandingPage() {
                 key={f.title}
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.04, y: -10 }}
+                whileTap={{ scale: 0.96 }}
                 viewport={{ once: true }}
                 transition={{ delay: (i % 3) * 0.08 }}
-                className="card-pop rounded-3xl border-4 border-white/10 bg-white/10 p-5 backdrop-blur"
+                className="card-pop rounded-3xl border-4 border-white/10 bg-white/10 p-5 backdrop-blur transition-colors hover:border-zippy-yellow/60 hover:bg-white/16"
               >
                 <div
                   className="mb-3 grid h-12 w-12 place-items-center rounded-2xl"
@@ -519,9 +785,11 @@ export default function LandingPage() {
                 key={f.title}
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.04, y: -10 }}
+                whileTap={{ scale: 0.96 }}
                 viewport={{ once: true }}
                 transition={{ delay: (i % 3) * 0.08 }}
-                className="rounded-3xl border-4 border-zippy-teal/35 bg-zippy-teal/12 p-5"
+                className="rounded-3xl border-4 border-zippy-teal/35 bg-zippy-teal/12 p-5 transition-colors hover:border-zippy-yellow/70 hover:bg-zippy-teal/22"
               >
                 <div className="mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-zippy-mint">
                   <f.icon className="h-6 w-6 text-zippy-navy" strokeWidth={2.8} />
@@ -544,9 +812,11 @@ export default function LandingPage() {
                 key={l.no}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.04, y: -8 }}
+                whileTap={{ scale: 0.97 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="relative rounded-3xl border-4 border-white/10 bg-white/8 p-5"
+                className="relative rounded-3xl border-4 border-white/10 bg-white/8 p-5 transition-colors hover:border-zippy-yellow/55 hover:bg-white/14"
               >
                 <span className="grid h-11 w-11 place-items-center rounded-full bg-zippy-yellow font-display text-xl font-bold text-zippy-navy">
                   {l.no}
@@ -575,9 +845,11 @@ export default function LandingPage() {
                 key={p.slug}
                 initial={{ opacity: 0, scale: 0.92 }}
                 whileInView={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.07, y: -10 }}
+                whileTap={{ scale: 0.95 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.07 }}
-                className="flex flex-col items-center rounded-3xl border-4 border-white/10 bg-white/8 p-4 text-center"
+                className="flex cursor-pointer flex-col items-center rounded-3xl border-4 border-white/10 bg-white/8 p-4 text-center transition-colors hover:border-zippy-yellow/65 hover:bg-white/16"
               >
                 <span
                   className="grid h-16 w-16 place-items-center rounded-2xl"
@@ -609,11 +881,11 @@ export default function LandingPage() {
             {FAQ.map((f) => (
               <details
                 key={f.q}
-                className="group rounded-3xl border-4 border-white/10 bg-white/8 px-5 py-4 [&::-webkit-details-marker]:hidden"
+                className="group rounded-3xl border-4 border-white/10 bg-white/8 px-5 py-4 transition-all duration-200 hover:border-zippy-teal/60 hover:bg-white/14 [&::-webkit-details-marker]:hidden"
               >
-                <summary className="flex cursor-pointer list-none items-start justify-between gap-3 font-display text-base font-bold text-white sm:text-lg">
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-3 font-display text-base font-bold text-white transition-colors hover:text-zippy-yellow sm:text-lg">
                   <span className="min-w-0">{f.q}</span>
-                  <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-zippy-yellow text-zippy-navy transition group-open:rotate-45">
+                  <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-zippy-yellow text-zippy-navy transition duration-300 group-open:rotate-[135deg] group-hover:scale-110">
                     <span className="text-lg leading-none font-black">+</span>
                   </span>
                 </summary>
@@ -623,6 +895,45 @@ export default function LandingPage() {
               </details>
             ))}
           </div>
+        </section>
+
+        {/* ----------------------------------------------- ZippyVerse dalam angka */}
+        <section className="mt-16 sm:mt-20">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {[
+              ["6", "Pulau siap dimainkan", "#FFC93C"],
+              ["18", "Misi berdurasi 3 menit", "#B2D8D5"],
+              ["143", "Butir soal asli", "#FFC93C"],
+              ["211", "Rekaman suara Indonesia", "#B2D8D5"],
+              ["6", "Tipe permainan berbeda", "#FFC93C"],
+            ].map(([angka, label, warna], i) => (
+              <motion.div
+                key={label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.05, y: -8 }}
+                whileTap={{ scale: 0.96 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.07 }}
+                className="rounded-3xl border-4 border-white/10 bg-white/8 p-4 text-center transition-colors hover:bg-white/14"
+              >
+                <p
+                  className="font-display text-3xl font-bold sm:text-4xl"
+                  style={{ color: warna }}
+                >
+                  {angka}
+                </p>
+                <p className="mt-1 text-xs font-bold leading-snug text-white/60">
+                  {label}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* ------------------------------------------------- Masukan pengembang */}
+        <section className="mt-16 sm:mt-20">
+          <FeedbackForm />
         </section>
 
         {/* ----------------------------------------------------- CTA akhir */}
@@ -637,6 +948,7 @@ export default function LandingPage() {
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <motion.button
+                whileHover={{ scale: 1.04, y: -3 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={bukaPanel}
                 className="btn-pop flex items-center gap-2 rounded-2xl bg-zippy-yellow px-6 py-3.5 text-base font-black text-zippy-navy"
@@ -644,13 +956,19 @@ export default function LandingPage() {
                 Mulai Bermain
                 <ArrowRight className="h-5 w-5" strokeWidth={3} />
               </motion.button>
-              <Link
-                href="/daftar"
-                onClick={() => unlockAudio()}
-                className="flex items-center gap-2 rounded-2xl border-4 border-white/40 px-6 py-3 text-base font-black text-white transition hover:bg-white/10"
-              >
-                Daftar / Masuk
-              </Link>
+              {!sudahMasuk && (
+                <motion.button
+                  whileHover={{ scale: 1.04, y: -3 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => {
+                    unlockAudio();
+                    router.push("/daftar");
+                  }}
+                  className="flex items-center gap-2 rounded-2xl border-4 border-white/40 px-6 py-3 text-base font-black text-white transition hover:bg-white/10"
+                >
+                  Daftar / Masuk
+                </motion.button>
+              )}
             </div>
             <p className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-bold text-white/55">
               <span className="inline-flex items-center gap-1">
@@ -790,13 +1108,20 @@ export default function LandingPage() {
                     {modeNama === "tambah" ? "Simpan & Mulai Bermain" : "Mulai Petualangan"}
                     <ArrowRight className="h-5 w-5" strokeWidth={3} />
                   </motion.button>
-                  {modeNama === "tambah" && (
+                  {/* Tombol "Kembali" hanya ada bila memang ada layar untuk
+                      dikembalikan. Mode "tambah" bisa muncul dalam dua keadaan:
+                      (a) anak sudah ada -> kembali ke pilihan nama, atau
+                      (b) akun masih kosong -> inilah layar paling awal, jadi
+                      tombol kembali akan membawa orang tua ke formulir tamu,
+                      yang justru menawarkan "Daftar / Masuk" kepada orang yang
+                      SUDAH masuk. Karena itu tombolnya tidak dirender. */}
+                  {modeNama === "tambah" && anak.length > 0 && (
                     <button
                       type="button"
                       onClick={() => {
                         setGalatNama("");
                         setNickname("");
-                        setModeNama(anak.length ? "pilih" : "tamu");
+                        setModeNama("pilih");
                       }}
                       className="mt-3 block w-full text-center text-sm font-black text-zippy-navy/60 underline underline-offset-4"
                     >
@@ -806,7 +1131,10 @@ export default function LandingPage() {
                 </form>
               )}
 
-              {modeNama !== "pilih" && (
+              {/* Ajakan daftar/masuk hanya untuk pengunjung yang belum punya
+                  akun. Menampilkannya kepada orang yang sudah masuk sama saja
+                  dengan mempertanyakan statusnya sendiri. */}
+              {!sudahMasuk && modeNama !== "pilih" && (
                 <button
                   onClick={() => {
                     setBukaNama(false);
