@@ -38,7 +38,11 @@ import AdminAkun from "@/components/admin/AdminAkun";
 
 const TAB = [
   { id: "akun", label: "Kelola Akun", desc: "Pendamping & anak mereka" },
-  { id: "perangkat", label: "Perangkat", desc: "Kemajuan pemain di browser ini" },
+  // Nama lama: "Perangkat" - isinya kemajuan pemain di browser INI saja, dan
+  // sejak ada tab Kelola Akun itu terdengar seolah panel punya dua tempat
+  // menyimpan anak yang berbeda. "Data Akun" menyatakan isi yang sebenarnya:
+  // nilai pemain yang bisa dilihat dan disunting.
+  { id: "perangkat", label: "Data Akun", desc: "Nilai pemain & kemajuan" },
   { id: "supabase", label: "Supabase", desc: "Telusuri tabel (baca saja)" },
   { id: "konten", label: "Konten", desc: "Harga, hadiah, batas energi" },
 ];

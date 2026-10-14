@@ -292,9 +292,19 @@ export async function POST(req) {
           id: u.id,
           email: u.email,
           dibuat: u.created_at,
-          // Ditandai supaya panel bisa memperingatkan sebelum menghapus
+          // Ditandai supaya panel bisa memeringatkan sebelum menghapus
           // akun yang sedang dipakai untuk masuk ke panel ini.
           iniPengelola: u.id === admin.id,
+          // Peran untuk SEMUA akun, bukan hanya yang sedang masuk.
+          // Sebelumnya penanda yang ada cuma `iniPengelola`, sehingga
+          // pengelola terlihat seperti akun Pendamping biasa yang kebetulan
+          // sedang memegang kunci panel - dan karenanya tampil di daftar
+          // "akun keluarga" beserta isian tambah anak di bawahnya.
+          //
+          // `app_metadata` ditulis Supabase dari sisi server dan tidak bisa
+          // dikarang lewat peramban, jadi penanda ini aman dipakai untuk
+          // memisahkan "akun admin khusus" dari "akun Pendamping" keluarga.
+          pengelola: u.app_metadata?.role === "admin",
           anak: perPemilik.get(u.id) || [],
         })),
       });

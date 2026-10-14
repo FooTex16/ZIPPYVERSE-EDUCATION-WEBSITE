@@ -7,13 +7,24 @@
  * itu bisa diedit datanya; pendamping juga bisa ditambah atau dihapus -
  * jadi panel ini mengatur semua data akun di website ini."
  *
- * PERBEDAAN PENTING DENGAN TAB "Perangkat"
+ * PERBEDAAN PENTING DENGAN TAB "Data Akun"
  *
- *   Perangkat  mengelola save browser INI saja. Perubahannya nyata hanya
- *              bagi pemain yang sedang memakai perangkat ini.
- *   Kelola Akun mengelola BASIS DATA. Perubahannya terbaca oleh perangkat
- *              manapun yang masuk dengan akun yang sama - itulah sebabnya
- *              tab ini ada.
+ *   Data Akun   mengelola nilai pemain yang tersimpan di awan. Tab ini dulu
+ *               bernama "Perangkat" karena hanya menyentuh save browser INI;
+ *               begitu ada tab ini, nama lama itu terdengar seolah panel
+ *               punya dua tempat menyimpan anak yang berbeda.
+ *   Kelola Akun mengelola STRUKTUR akun: siapa Pendamping, siapa anaknya,
+ *              dan akun mana yang berperan pengelola. Perubahannya terbaca
+ *              oleh perangkat manapun yang masuk dengan akun yang sama -
+ *              itulah sebabnya tab ini ada.
+ *
+ * DENGAN AKUN ADMIN
+ *
+ * Akun berperan pengelola (perannya `admin` pada `app_metadata`) TIDAK
+ * diperlakukan sebagai akun Pendamping walaupun sama-sama satu akun
+ * Supabase. Ia tidak memuat profil anak dan tidak muncul di layar pilih
+ * nama anak, jadi ditampilkan terpisah dengan lencana "Admin" - bukan
+ * bersama daftar keluarga beserta isian tambah anaknya.
  *
  * Seluruh aksi tulis melewati /api/admin, yang mewajibkan peran pengelola
  * pada token sesi. Bentuk formulir di sini hanyalah pembungkus: aturan
@@ -37,6 +48,7 @@ import {
   ChevronDown,
   Baby,
   ShieldAlert,
+  ShieldCheck,
 } from "lucide-react";
 import { tulisAdmin } from "@/lib/adminApi";
 import { play } from "@/lib/sfx";
@@ -197,7 +209,17 @@ export default function AdminAkun() {
 
   if (daftar === null) return <Kotak>Memuat daftar akun...</Kotak>;
 
-  const totalAnak = daftar.reduce((n, p) => n + (p.anak || []).length, 0);
+  // Dua kelompok berbeda, sengaja tidak dicampur:
+  //
+  //   Akun Pendamping  keluarga yang punya profil anak. Ini yang dihitung
+  //                    sebagai "keluarga" dan yang boleh menampung anak.
+  //   Akun Admin       peran pengelola panel. Tidak memuat profil anak dan
+  //                    tidak muncul di layar pilih nama anak. Kalau ia ikut
+  //                    dihitung, "Akun Pendamping" selalu kelebihan satu dan
+  //                    rata-rata anak per akun ikut meleset.
+  const akunAdmin = daftar.filter((p) => p.pengelola);
+  const akunPendamping = daftar.filter((p) => !p.pengelola);
+  const totalAnak = akunPendamping.reduce((n, p) => n + (p.anak || []).length, 0);
 
   return (
     <div className="space-y-4">
@@ -214,12 +236,9 @@ export default function AdminAkun() {
 
       {/* Ringkasan */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Ringkas label="Akun Pendamping" nilai={daftarRusak ? "—" : daftar.length} />
+        <Ringkas label="Akun Pendamping" nilai={daftarRusak ? "—" : akunPendamping.length} />
+        <Ringkas label="Akun Admin" nilai={daftarRusak ? "—" : akunAdmin.length} />
         <Ringkas label="Total Anak" nilai={daftarRusak ? "—" : totalAnak} />
-        <Ringkas
-          label="Anak per Akun"
-          nilai={daftarRusak || !daftar.length ? "—" : (totalAnak / daftar.length).toFixed(1)}
-        />
         <Ringkas label="Batas Anak" nilai={`${MAKS_ANAK} / akun`} />
       </div>
 
@@ -304,6 +323,61 @@ export default function AdminAkun() {
         <div className="space-y-3">
           {daftar.map((p) => {
             const terbuka = buka === p.id;
+
+            // --------------------------------------------------------
+            // Akun berperan pengelola - ditampilkan TERPISAH
+            // --------------------------------------------------------
+            // Ia memang satu akun Supabase seperti akun lain, tetapi
+            // perannya pengelola panel, bukan keluarga. Ia tidak memuat
+            // profil anak dan tidak muncul di layar pilih nama anak.
+            //
+            // Kalau akun ini digabung ke daftar Pendamping seperti sebelumnya,
+            // ia akan terbaca sebagai "akun keluarga yang anaknya tinggal
+            // dihapus" - padahal akun inilah yang justru memegang kunci panel.
+            if (p.pengelola) {
+              return (
+                <div
+                  key={p.id}
+                  className="rounded-2xl border-2 border-zippy-yellow/70 bg-zippy-yellow/12 p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zippy-yellow/35 text-zippy-navy">
+                      <ShieldCheck className="h-5 w-5" strokeWidth={2.8} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-black text-zippy-navy">
+                        {p.email}
+                      </span>
+                      <span className="block text-[11px] font-bold text-zippy-navy/60">
+                        Akun admin khusus · bukan akun Pendamping
+                      </span>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-zippy-navy px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-zippy-yellow">
+                      Admin
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-[11px] font-bold leading-relaxed text-zippy-navy/65">
+                    Akun ini hanya untuk membuka Panel Admin dan Setting Peta.
+                    Tidak memuat profil anak, jadi tidak ada isian tambah anak
+                    di sini - sama sekali berbeda dari akun keluarga di bawahnya.
+                  </p>
+
+                  {!p.iniPengelola && (
+                    <div className="mt-3 border-t-2 border-zippy-navy/10 pt-3">
+                      <button
+                        onClick={() => hapusPendamping(p)}
+                        disabled={sibuk}
+                        className="flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2 text-sm font-black text-white transition hover:bg-red-600 active:scale-95 disabled:opacity-40"
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={3} /> Hapus Akun Ini
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <div
                 key={p.id}
@@ -479,7 +553,12 @@ export default function AdminAkun() {
           </li>
           <li>
             <b>Halaman &quot;Kelola Akun&quot; ini tidak menyentuh kemajuan bermain</b> (koin,
-            XP, pulau). Kemajuan ada di tab <b>Perangkat</b> dan <b>Supabase</b>.
+            XP, pulau). Kemajuan ada di tab <b>Data Akun</b> dan <b>Supabase</b>.
+          </li>
+          <li>
+            <b>Akun berperan pengelola tampil terpisah</b> dengan lencana{" "}
+            <b>Admin</b>. Akun itu bukan akun Pendamping, jadi tidak memuat
+            profil anak dan tidak ikut dihitung pada ringkasan keluarga.
           </li>
           <li>
             Penghapusan selalu diminta ulang lewat kotak konfirmasi, dan tidak ada
