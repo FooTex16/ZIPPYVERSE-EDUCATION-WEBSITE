@@ -9,8 +9,8 @@ import SpaceBackdrop from "@/components/SpaceBackdrop";
 import Zippy from "@/components/Zippy";
 import { unlockAudio, play } from "@/lib/sfx";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
-import { update, load } from "@/lib/store";
-import { lepasProfil } from "@/lib/profil";
+import { load } from "@/lib/store";
+import { lepasProfil, pasangProfil } from "@/lib/profil";
 
 /**
  * Halaman Daftar / Masuk.
@@ -41,10 +41,12 @@ export default function HalamanDaftar() {
    */
   function tandaiMasuk(user) {
     if (!user?.email) return;
-    update((s) => ({
-      ...s,
-      pendamping: { id: user.id || null, email: user.email },
-    }));
+    // Yang menentukan "anak mana yang boleh menempel" adalah pasangProfil(),
+    // bukan sekadar menulis `pendamping`. Versi lama hanya mengisi sakelar
+    // akun, sehingga daftar anak milik akun SEBELUMNYA masih tertinggal di
+    // posisi teratas dan ikut tampil di akun yang baru masuk - data anak
+    // bocor antar akun Pendamping.
+    pasangProfil(user);
   }
 
   function tandaiKeluar() {
