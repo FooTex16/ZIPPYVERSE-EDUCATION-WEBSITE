@@ -10,6 +10,7 @@ import Zippy from "@/components/Zippy";
 import { unlockAudio, play } from "@/lib/sfx";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 import { update } from "@/lib/store";
+import { lepasProfil } from "@/lib/profil";
 
 /**
  * Halaman Daftar / Masuk.
@@ -47,17 +48,14 @@ export default function HalamanDaftar() {
   }
 
   function tandaiKeluar() {
-    update((s) => {
-      const next = { ...s };
-      delete next.pendamping;
-      // Daftar anak dan kemajuannya juga dilepas: perangkat ini sudah tidak
-      // lagi terikat akun tersebut, dan biarkan pemilik berikutnya memulai
-      // dari keadaan bersih.
-      delete next.anak;
-      delete next.anakAktif;
-      delete next.simpanan;
-      return next;
-    });
+    // Reset penuh, sama persis dengan tombol "Keluar" di halaman utama.
+    //
+    // Versi lama hanya menghapus empat kunci akun, tetapi SIMPANAN AKTIF
+    // dibiarkan utuh. Padahal blob aktif saat orang tua keluar adalah milik
+    // anak yang terakhir bermain (koin, pulau, kostumnya), jadi tamu
+    // berikutnya tetap mewarisi kemajuannya. lepasProfil() mengembalikan
+    // seluruh simpanan ke keadaan awal instalasi.
+    lepasProfil();
   }
 
   useEffect(() => {
