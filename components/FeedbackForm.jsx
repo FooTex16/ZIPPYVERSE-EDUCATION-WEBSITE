@@ -20,11 +20,18 @@
  *   Bila kelak ingin pengiriman sepenuhnya otomatis dari server, tambahkan
  *   berkas rute yang memakai kredensial SMTP - formulir ini sudah
  *   terpisah sehingga bisa ditukar tanpa menyentuh tampilannya.
+ *
+ * BATAS PENGIRIMAN
+ *
+ *   Satu hal TETAP melewati server: pengecekan kuota lewat `/api/masukan`
+ *   (lima pesan per hari per IP). Batas yang hanya disimpan di peramban
+ *   bisa dihapus dalam dua klik, sedangkan server tidak. Lihat berkas rute
+ *   tersebut untuk rinciannya.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Mail, Check, MessageSquareHeart } from "lucide-react";
+import { Send, Mail, Check, MessageSquareHeart, Gauge } from "lucide-react";
 import { unlockAudio, play } from "@/lib/sfx";
 
 const EMAIL_PENGEMBANG = "deepcrips@outlook.com";
@@ -40,6 +47,69 @@ const KATEGORI = [
 
 const BATAS_PESAN = 1200;
 
+// ---------------------------------------------------------------
+// Kuota dan penanda perangkat
+// ---------------------------------------------------------------
+//
+// Batas yang berlaku sesungguhnya ada di server (`/api/masukan`): lima
+// pesan per hari per IP, dan pengunjung tidak bisa menghapusnya dari
+// Alat Pengembang. Yang di sini hanya LAPISAN TAMPILAN agar pengguna
+// langsung tahu sisa kuotanya tanpa harus menunggu jawaban jaringan, dan
+// tetap bisa mengirim bila server sedang tidak terjangkau.
+//
+// `deviceId` adalah pengganti "HWID" yang bisa disediakan peramban.
+// Nomor seri asli tidak pernah tersedia bagi situs web (itu memang sengaja),
+// jadi yang dipakai adalah UUID acak yang disimpan sekali di perangkat
+// tersebut. Server menyimpannya sebagai hash, bukan apa adanya.
+// ---------------------------------------------------------------
+
+const BATAS_HARIAN = 5;
+const HARI_MS = 24 * 60 * 60 * 1000;
+const OFFSET_WIB = 7 * 60 * 60 * 1000;
+const KUNCI_KUOTA = "zippyverse_masukan_v1";
+const KUNCI_ALAT = "zippyverse_alat_v1";
+
+/** Hari menurut kalender WIB, supaya sama dengan yang dihitung server. */
+function hariWib() {
+  return Math.floor((Date.now() + OFFSET_WIB) / HARI_MS);
+}
+
+/** Baca sisa kuota lokal untuk hari WIB berjalan. */
+function bacaKuota() {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(KUNCI_KUOTA) || "{}");
+    if (raw.hari !== hariWib()) return BATAS_HARIAN;
+    return Math.max(0, BATAS_HARIAN - (Number(raw.jumlah) || 0));
+  } catch {
+    return BATAS_HARIAN;
+  }
+}
+
+/** Catat penggunaan kuota lokal. `sisa` datang dari server bila ada. */
+function tulisKuota(sisa) {
+  try {
+    window.localStorage.setItem(
+      KUNCI_KUOTA,
+      JSON.stringify({ hari: hariWib(), jumlah: BATAS_HARIAN - Math.max(0, sisa) })
+    );
+  } catch {}
+}
+
+/** Nomor identifikasi perangkat (pengganti HWID), dibuat sekali. */
+function idAlat() {
+  try {
+    const lama = window.localStorage.getItem(KUNCI_ALAT);
+    if (lama) return lama;
+    const baru =
+      (typeof crypto !== "undefined" && crypto.randomUUID?.()) ||
+      `alat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    window.localStorage.setItem(KUNCI_ALAT, baru);
+    return baru;
+  } catch {
+    return null;
+  }
+}
+
 export default function FeedbackForm() {
   const [nama, setNama] = useState("");
   const [kategori, setKategori] = useState(KATEGORI[0].id);
@@ -47,8 +117,16 @@ export default function FeedbackForm() {
   const [galat, setGalat] = useState("");
   const [terkirim, setTerkirim] = useState(false);
   const [tautan, setTautan] = useState("");
+  const [sisa, setSisa] = useState(BATAS_HARIAN);
+  const [sibuk, setSibuk] = useState(false);
 
-  function kirim(e) {
+  // Baca kuota setelah komponen terpasang: `localStorage` tidak ada di
+  // server, jadi tidak boleh dibaca saat render pertama.
+  useEffect(() => {
+    setSisa(bacaKuota());
+  }, []);
+
+  async function kirim(e) {
     e.preventDefault();
     unlockAudio();
 
@@ -57,7 +135,61 @@ export default function FeedbackForm() {
       setGalat("Tulis minimal 10 huruf supaya masukannya bisa ditindaklanjuti.");
       return;
     }
+
+    // Cek cepat di sini supaya tombol tidak lagi memanggil jaringan bila
+    // kuota sudah habis hari ini.
+    const lokal = bacaKuota();
+    if (lokal <= 0) {
+      setGalat(
+        `Batas ${BATAS_HARIAN} pesan per hari sudah tercapai. Kuota berikutnya tersedia besok.`
+      );
+      setSisa(0);
+      return;
+    }
+
     setGalat("");
+    setSibuk(true);
+
+    // Penjaga sesungguhnya ada di server. Bila di sini ditolak, formulir
+    // berhenti - pesan tidak akan sempat dibuka di aplikasi email.
+    let sisaServer = lokal;
+    try {
+      const ac = new AbortController();
+      const jeda = setTimeout(() => ac.abort(), 7000);
+      const r = await fetch("/api/masukan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          nama: nama.trim(),
+          kategori,
+          pesan: isi,
+          deviceId: idAlat(),
+        }),
+        signal: ac.signal,
+      });
+      clearTimeout(jeda);
+
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) {
+        setSibuk(false);
+        setGalat(d.pesan || "Pengiriman ditolak. Coba lagi nanti.");
+        if (r.status === 429) {
+          setSisa(0);
+          tulisKuota(0);
+        }
+        return;
+      }
+      sisaServer = typeof d.sisa === "number" ? d.sisa : Math.max(0, lokal - 1);
+      tulisKuota(sisaServer);
+    } catch {
+      // Server tidak terjangkau. Kuota lokal dipakai sebagai cadangan
+      // supaya formulir tidak mati total, dan batasnya tetap 5 per hari.
+      sisaServer = Math.max(0, lokal - 1);
+      tulisKuota(sisaServer);
+    }
+
+    setSisa(sisaServer);
+    setSibuk(false);
     play("levelup");
 
     const judul = `[ZippyVerse] ${
@@ -70,6 +202,7 @@ export default function FeedbackForm() {
       `Nama : ${nama.trim() || "(tidak disebutkan)"}`,
       `Kategori : ${KATEGORI.find((k) => k.id === kategori)?.label || kategori}`,
       `Waktu : ${new Date().toLocaleString("id-ID")}`,
+      `Sisa kuota hari ini : ${sisaServer} dari ${BATAS_HARIAN}`,
       "",
       "Pesan:",
       isi,
@@ -240,13 +373,26 @@ export default function FeedbackForm() {
             <div className="flex flex-wrap items-center gap-3">
               <motion.button
                 type="submit"
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.96 }}
-                className="btn-pop flex items-center gap-2 rounded-2xl bg-zippy-yellow px-6 py-3 text-base font-black text-zippy-navy"
+                disabled={sibuk || sisa <= 0}
+                whileHover={sibuk || sisa <= 0 ? undefined : { scale: 1.03, y: -2 }}
+                whileTap={sibuk || sisa <= 0 ? undefined : { scale: 0.96 }}
+                className="btn-pop flex items-center gap-2 rounded-2xl bg-zippy-yellow px-6 py-3 text-base font-black text-zippy-navy transition disabled:cursor-not-allowed disabled:opacity-55"
               >
-                Kirim ke Pengembang
+                {sibuk ? "Mengirim..." : "Kirim ke Pengembang"}
                 <Send className="h-5 w-5" strokeWidth={3} />
               </motion.button>
+
+              <span
+                title="Batas pesan yang dapat dikirim hari ini"
+                className={`inline-flex items-center gap-1.5 rounded-2xl px-3 py-2 text-xs font-black ${
+                  sisa > 0
+                    ? "bg-white/10 text-zippy-mint"
+                    : "bg-zippy-yellow/25 text-zippy-yellow"
+                }`}
+              >
+                <Gauge className="h-4 w-4" strokeWidth={3} />
+                Sisa hari ini: {sisa} dari {BATAS_HARIAN}
+              </span>
 
               <a
                 href={`mailto:${EMAIL_PENGEMBANG}`}
@@ -260,8 +406,10 @@ export default function FeedbackForm() {
             <p className="rounded-2xl bg-white/6 px-4 py-2.5 text-[11px] font-semibold leading-relaxed text-white/55">
               Pesan dibuka di aplikasi email Anda lalu dikirim langsung ke
               pengembang. <b className="text-white/75">Tidak ada pihak ketiga</b>{" "}
-              yang ikut meneruskan, dan tidak ada data Anda yang disimpan di
-              tempat lain.
+              yang ikut meneruskan. Demi kenyamanan bersama, pengiriman
+              dibatasi <b className="text-white/75">{BATAS_HARIAN} pesan per hari</b> -
+              server hanya menyimpan catatan berupa hash untuk menahan spam,
+              bukan alamat maupun isi pesan Anda.
             </p>
           </motion.form>
         )}
