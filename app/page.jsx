@@ -21,6 +21,7 @@ import {
   Eye,
   HeartHandshake,
   X,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import SpaceBackdrop from "@/components/SpaceBackdrop";
@@ -192,6 +193,9 @@ export default function LandingPage() {
   const [pendamping, setPendamping] = useState(null);
   const [anak, setAnak] = useState([]);
   const [galatNama, setGalatNama] = useState("");
+  // Pintu Panel Admin hanya untuk akun berperan pengelola. Default-nya
+  // selalu false, jadi tamu tidak pernah sempat melihatnya.
+  const [bolehAdmin, setBolehAdmin] = useState(false);
 
   useEffect(() => {
     try {
@@ -206,6 +210,24 @@ export default function LandingPage() {
       }
     } catch {}
     setReady(true);
+
+    // Menu "Admin Panel" muncul hanya bila sesi Supabase berperan pengelola.
+    // Peran dibaca dari `app_metadata.role` - bukan `user_metadata` - karena
+    // yang pertama ditulis oleh Supabase dari sisi server dan tidak bisa
+    // diubah lewat Alat Pengembang.
+    //
+    // Ini murni kebijakan TAMPILAN. Pengaman sesungguhnya tetap di server:
+    // /api/admin menolak token tanpa peran pengelola, jadi walau ada yang
+    // mengetik /admin langsung, ia tetap berhenti di gerbangnya.
+    if (supabaseEnabled) {
+      supabase.auth
+        .getSession()
+        .then(({ data }) => {
+          const peran = data?.session?.user?.app_metadata?.role;
+          setBolehAdmin(peran === "admin");
+        })
+        .catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -354,6 +376,26 @@ export default function LandingPage() {
           </Link>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
+            {/* Menu Admin Panel: berdiri di SEBELAH KIRI Dasbor Orang Tua,
+                dan hanya muncul untuk akun berperan pengelola. Dasbor Orang
+                Tua berisi ringkasan perkembangan (baca-saja), sedangkan menu
+                ini pintu ke ruang kerja pengelola. */}
+            {bolehAdmin && (
+              <button
+                onClick={() => {
+                  unlockAudio();
+                  router.push("/admin");
+                }}
+                aria-label="Buka panel admin"
+                className="grid h-10 w-10 place-items-center rounded-full border-2 border-zippy-yellow/60 text-zippy-yellow transition hover:bg-zippy-yellow/15 sm:w-auto sm:px-4"
+              >
+                <Settings className="h-5 w-5 sm:hidden" strokeWidth={2.8} />
+                <span className={`hidden sm:inline ${TOMBOL_KEcil}`}>
+                  Admin Panel
+                </span>
+              </button>
+            )}
+
             <button
               onClick={() => {
                 unlockAudio();
