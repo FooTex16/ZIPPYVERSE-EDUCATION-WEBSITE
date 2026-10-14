@@ -1,0 +1,403 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --teal: #2aa5a0;
+  --mint: #b2d8d5;
+  --yellow: #ffc93c;
+  --cream: #fff6e5;
+  --navy: #0f2c3d;
+  --font-display: "Fredoka", "Baloo 2", system-ui, sans-serif;
+  --font-body: "Baloo 2", system-ui, sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--navy);
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-weight: 600;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Animasi tambahan agar lebih hidup ---------- */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.06); }
+}
+.animate-pulse-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
+}
+.animate-float-slow {
+  animation: floatSlow 5s ease-in-out infinite;
+}
+
+/* Glassmorphism yang lebih bersih */
+.glass-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+}
+.glass-card-hover {
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.glass-card-hover:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 201, 60, 0.5);
+  transform: translateY(-4px);
+}
+/* ---------- Latar angkasa bergerak ---------- */
+
+/* Tidak ada planet statis. Hanya kabut cahaya yang bergerak. */
+.space-bg {
+  background:
+    radial-gradient(1100px 700px at 78% 12%, rgba(42, 165, 160, 0.22), transparent 60%),
+    linear-gradient(170deg, #123a50 0%, #0f2c3d 45%, #0a2130 100%);
+}
+
+/* Nebula bergerak sangat lambat */
+.nebula {
+  background:
+    radial-gradient(760px 520px at 20% 82%, rgba(255, 201, 60, 0.10), transparent 62%),
+    radial-gradient(640px 460px at 74% 30%, rgba(178, 216, 213, 0.10), transparent 64%),
+    radial-gradient(900px 620px at 48% 58%, rgba(42, 165, 160, 0.08), transparent 66%);
+  animation: nebulaDrift 42s ease-in-out infinite alternate;
+  transform: translate3d(calc(var(--px, 0px) * 2), calc(var(--py, 0px) * 2), 0);
+  will-change: transform;
+}
+
+@keyframes nebulaDrift {
+  0% {
+    transform: translate3d(calc(var(--px, 0px) * 2), calc(var(--py, 0px) * 2), 0) scale(1);
+  }
+  50% {
+    transform: translate3d(calc(var(--px, 0px) * 2), calc(var(--py, 0px) * 2), 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(calc(var(--px, 0px) * 2), calc(var(--py, 0px) * 2), 0) scale(1.03);
+  }
+}
+
+/* Bintang melayang: tiap lapis mencakup 200% tinggi lalu digeser -50%,
+   sehingga layar selalu terisi bintang dan loop-nya mulus. */
+@keyframes starDrift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -50%, 0);
+  }
+}
+
+/* Parallax halus mengikuti kursor, makin dekat makin bergerak.
+   Aturan ini hanya pada elemen luar (tanpa animasi). */
+.starfield .star-par-0,
+.space-scene .star-par-0 {
+  transform: translate3d(calc(var(--px, 0px) * 3), calc(var(--py, 0px) * 3), 0);
+}
+.starfield .star-par-1,
+.space-scene .star-par-1 {
+  transform: translate3d(calc(var(--px, 0px) * 7), calc(var(--py, 0px) * 7), 0);
+}
+.starfield .star-par-2,
+.space-scene .star-par-2 {
+  transform: translate3d(calc(var(--px, 0px) * 12), calc(var(--py, 0px) * 12), 0);
+}
+
+/* ---------- Animasi pulau di peta ----------
+   Tujuh pulau harus terasa "hidup", bukan tempelan gambar yang kaku.
+   Semua gerakannya lambat dan berbasis transform/opacity saja (GPU), jadi
+   aman untuk performa dan tidak membuat anak pusing. */
+
+/* 1. Melayang naik-turun. Dipakai sebagai lapisan dasar tiap pulau. */
+@keyframes islandFloat {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -10px, 0); }
+}
+.animate-island-float {
+  animation: islandFloat 5.2s ease-in-out infinite;
+}
+
+/* 2. Berayun pelan memberi kesan pulau "bernafas". */
+@keyframes islandSway {
+  0%, 100% { transform: rotate(-2.2deg); }
+  50% { transform: rotate(2.2deg); }
+}
+.animate-island-sway {
+  animation: islandSway 6.4s ease-in-out infinite;
+}
+
+/* 3. Cincin bercahaya di bawah pulau yang terbuka supaya jelas mana yang
+      boleh diklik. Cincin ini yang paling menarik perhatian anak. */
+@keyframes islandRing {
+  0% { transform: scale(0.82); opacity: 0.75; }
+  70% { transform: scale(1.28); opacity: 0; }
+  100% { transform: scale(1.28); opacity: 0; }
+}
+.animate-island-ring {
+  animation: islandRing 2.6s ease-out infinite;
+}
+
+/* 4. Kilau kecil berputar di sisi pulau terbuka. */
+@keyframes islandSpark {
+  0%, 100% { transform: translateY(0) scale(0.75); opacity: 0.25; }
+  50% { transform: translateY(-9px) scale(1.15); opacity: 1; }
+}
+.animate-island-spark {
+  animation: islandSpark 2.1s ease-in-out infinite;
+}
+
+/* 5. Denyut lembut untuk pulau berikutnya (ajakan main). */
+@keyframes islandInvite {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.055); }
+}
+.animate-island-invite {
+  animation: islandInvite 1.7s ease-in-out infinite;
+}
+
+/* 6. Label nama pulau ikut bergerak sedikit supaya tidak terasa mati. */
+@keyframes labelBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+.animate-label-bounce {
+  animation: labelBounce 3.4s ease-in-out infinite;
+}
+
+/* ---------- Layar memuat: satu meteor besar ----------
+   Satu meteor besar meluncur dari kanan-atas ke kiri-bawah, menemani teks
+   "Memuat ..." supaya anak tidak melihat layar yang terasa mati.
+
+   Keempat sisi memakai satuan vw/vh supaya jalurnya otomatis mengikuti
+   ukuran layar, dari 320 px sampai desktop. Kepala meteor ada di KIRI BAWAH
+   pada gambar sehingga selaras dengan arah translate3d di bawah ini. */
+@keyframes meteorFall {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  10% { opacity: 1; }
+  78% { opacity: 1; }
+  100% {
+    transform: translate3d(-108vw, 86vh, 0);
+    opacity: 0;
+  }
+}
+.meteor {
+  position: absolute;
+  /* Mulai sedikit di luar tepi kanan-atas supaya meteor "masuk" ke layar,
+     bukan tiba-tiba muncul di tengah. */
+  top: -8vh;
+  right: -6vw;
+  /* Besar, tapi tetap muat di HP 320 px. */
+  width: clamp(168px, 30vw, 380px);
+  will-change: transform, opacity;
+  animation: meteorFall 5.6s linear infinite;
+}
+
+/* Gambar meteor. Ditambah sedikit berayun supaya tidak terasa seperti stiker
+   tempel yang meluncur kaku. Animasinya terpisah dari .meteor supaya gerak
+   jatuh dan gerak berayun tidak saling menimpa pada elemen yang sama. */
+.meteor img {
+  display: block;
+  width: 100%;
+  height: auto;
+  animation: meteorRock 3.4s ease-in-out infinite;
+}
+
+@keyframes meteorRock {
+  0%, 100% { transform: rotate(-3deg); }
+  50%      { transform: rotate(3deg); }
+}
+
+@keyframes meteorPulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.98); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+.animate-meteor-pulse {
+  animation: meteorPulse 1.5s ease-in-out infinite;
+}
+
+/* ---------- Tombol dengan efek "pop" ---------- */
+.btn-pop {
+  box-shadow: 0 6px 0 rgba(15, 44, 61, 0.45);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+.btn-pop:hover {
+  filter: brightness(1.05);
+}
+.btn-pop:active {
+  transform: translateY(5px);
+  box-shadow: 0 1px 0 rgba(15, 44, 61, 0.45);
+}
+.btn-pop:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 6px 0 rgba(15, 44, 61, 0.3);
+}
+
+/* ---------- Kartu-kartu ---------- */
+.card-pop {
+  box-shadow: 0 10px 0 rgba(15, 44, 61, 0.28), 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+/* ---------- Sembunyikan scrollbar ---------- */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ---------- Teks utama ---------- */
+.text-stroke-navy {
+  text-shadow: 0 3px 0 rgba(15, 44, 61, 0.35);
+}
+
+/* ---------- Angka draggable ---------- */
+.drag-tile {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---------- Cegah zoom ganda-ketuk ----------
+   Anak sering mengetuk dua kali tanpa sengaja dan membuat layar membesar.
+   `manipulation` mematikan zoom ganda-ketuk namun TETAP mengizinkan cubitan,
+   sehingga orang tua yang membutuhkan perbesaran tidak terkunci.
+
+   Selektor ini memakai bobot lebih rendah daripada `.drag-tile`, jadi daerah
+   permainan tetap memperoleh `touch-action: none` yang dibutuhkan seret-jatuh. */
+button,
+a,
+input,
+label,
+main {
+  touch-action: manipulation;
+}
+
+/* ---------- Animasi antena Zippy ---------- */
+.antenna-wobble {
+  transform-origin: 50% 100%;
+  animation: antennaWobble 2.4s ease-in-out infinite;
+}
+@keyframes antennaWobble {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+
+/* ---------- Focus ring ramah anak ---------- */
+*:focus-visible {
+  outline: 4px solid var(--yellow);
+  outline-offset: 3px;
+}
+
+/* ---------- Performa ---------- */
+
+/* Hemat daya: hapus blur di layar kecil */
+@media (max-width: 640px) {
+  .backdrop-blur {
+    backdrop-filter: none;
+  }
+}
+
+/* ---------- Latar: hemat layer di perangkat kecil ---------- */
+
+/* Lapisan tambahan (kabut besar, debu, planet) disembunyikan di HP
+   supaya jumlah lapisan GPU tetap rendah. */
+@media (max-width: 768px) {
+  .space-scene .layer-extra {
+    display: none;
+  }
+}
+
+/* ---------- Aksesibilitas gerak ----------
+   "Kurangi animasi" tidak berarti membekukan layar. Membekukan total membuat
+   langit terasa mati, jadi:
+   - gerak CEPAT / berkedip dimatikan (aman untuk gangguan vestibular)
+   - gerak AMBIENT lambat tetap jalan: bintang melayang dan kabut
+   Toggle di HUD bisa memaksa animasi penuh. */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Pemilih `html:not([data-motion="on"])` dipakai supaya aturan di bawah ini
+     tidak berlaku bila anak menyalakan saklar ✨ di HUD. Pola ini dipilih
+     karena lebih andal daripada mencoba "membuka kembali" animasi lewat blok
+     `html[data-motion="on"]` terpisah: aturan pengembali itu harus menimpa
+     deklarasi `!important`, yang pada praktiknya tidak pernah menang. */
+  html:not([data-motion="on"]) .animate-twinkle,
+  html:not([data-motion="on"]) .animate-shooting,
+  html:not([data-motion="on"]) .animate-bob,
+  html:not([data-motion="on"]) .animate-floaty,
+  html:not([data-motion="on"]) .animate-floatySlow,
+  html:not([data-motion="on"]) .animate-wiggle,
+  html:not([data-motion="on"]) .animate-popIn,
+  html:not([data-motion="on"]) .animate-pulseGlow,
+  html:not([data-motion="on"]) .animate-spinSlow,
+  /* Kilau & denyut pulau: gerak cepat/berulang, dimatikan dulu. */
+  html:not([data-motion="on"]) .animate-island-ring,
+  html:not([data-motion="on"]) .animate-island-spark,
+  html:not([data-motion="on"]) .animate-island-invite,
+  html:not([data-motion="on"]) .animate-meteor-pulse {
+    animation: none !important;
+  }
+
+  /* Meteor ditahan di posisi mulainya (tetap terlihat, tidak berkedip). */
+  html:not([data-motion="on"]) .meteor,
+  html:not([data-motion="on"]) .meteor img {
+    animation: none !important;
+    opacity: 0.9;
+  }
+
+  /* Gerak ambient lambat (melayang, berayun) tetap jalan supaya peta
+     tidak terasa seperti gambar mati. */
+  html:not([data-motion="on"]) * {
+    transition-duration: 0.08s !important;
+  }
+}
+
+/* Catatan: blok "Paksa animasi penuh lewat toggle pengguna" yang dulu ada di
+   sini sudah DIHAPUS karena tidak pernah bekerja. Blok itu berisi:
+
+     html[data-motion="on"] .animate-* {
+       animation-duration: revert-layer;
+       animation-iteration-count: infinite;
+     }
+
+   Kegagalannya dua kali lipat:
+   1. `revert-layer` tanpa pengelompokan @layer mengembalikan nilai ke lapisan
+      sebelumnya (asal pengguna/bawaan), bukan ke aturan dasar di stylesheet
+      ini — jadi durasinya kembali 0s, bukan durasi animasi aslinya.
+   2. Deklarasi itu tidak memakai `!important`, sehingga kalah telak terhadap
+      `animation: none !important` pada blok prefers-reduced-motion.
+
+   Akibatnya saklar ✨ di HUD tidak pernah benar-benar menyalakan kembali
+   animasi. Pemulihan kini dilakukan lewat pemilih
+   `html:not([data-motion="on"])` di blok prefers-reduced-motion, sehingga
+   aturan "matikan animasi" sederhana tidak berlaku saat anak menyalakan
+   saklar itu. Lihat blok tersebut untuk rinciannya. */
