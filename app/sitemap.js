@@ -1,5 +1,10 @@
+import { alamatSitus } from "@/lib/situsUrl";
+
 // Sitemap dihasilkan dari kode supaya alamat situsnya ikut terbaca dari
-// NEXT_PUBLIC_SITE_URL dan tidak perlu dirawat dua kali.
+// NEXT_PUBLIC_SITE_URL dan tidak perlu dirawat dua kali. Bila variabel itu
+// tidak diisi, lib/situsUrl.js memakai alamat produksi yang dicatat Vercel -
+// tanpanya seluruh <loc> di berkas ini akan menunjuk ke localhost dan mesin
+// pencari tidak bisa mengindeks halaman mana pun.
 
 // Daftar slug sengaja ditulis sebagai teks biasa, bukan diimpor dari
 // lib/gameData.js. Berkas sitemap ini dijalankan Node saat proses build,
@@ -8,7 +13,7 @@
 // gagal karena satu berkas yang tersentuh angin.
 const RUTE_PULAU = ["coba", "angka", "kata", "sains", "kreatif", "bumi"];
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const SITE_URL = alamatSitus();
 
 /** @returns {Array<{url:string,lastModified:Date,changeFrequency:string,priority:string}>} */
 export default function sitemap() {

@@ -1,8 +1,13 @@
+import { alamatSitus } from "@/lib/situsUrl";
+
 // Berkas robots dihasilkan dari kode (bukan berkas statis di public/)
 // supaya selalu ikut ter-deploy dan alamat situsnya ikut terbaca dari
 // NEXT_PUBLIC_SITE_URL - sama seperti yang dipakai sitemap dan OpenGraph.
+// Tanpa cadangan dari lib/situsUrl.js, baris `Sitemap:` di bawah akan
+// menunjuk ke localhost dan Lighthouse menandai robots.txt sebagai tidak
+// valid karena peta situs itu tidak terjangkau.
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const SITE_URL = alamatSitus();
 
 export default function robots() {
   return {

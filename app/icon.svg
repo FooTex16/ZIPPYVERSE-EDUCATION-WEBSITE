@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ZippyVerse">
+  <!--
+    Ikon tab dan mesin pencari.
+
+    Selama ini situs sama sekali tidak punya ikon: `app/layout.jsx` tidak
+    menautkan apa pun, sehingga `/favicon.ico` menjawab 404 dan tab peramban
+    tampil tanpa gambar. Berkas ini diletakkan di `app/`, bukan di `public/`,
+    supaya Next.js menautkannya sendiri ke kepala setiap halaman beserta
+    berkas bertanda tangan untuk cache.
+
+    Warna diambil dari palet resmi: latar teal, petir kuning, garis tepi navy.
+    Bentuknya sengaja hanya satu bidang tebal - pada ukuran 16 px butiran dan
+    gradasi hilang begitu saja, sedangkan siluet petir masih terbaca.
+  -->
+  <rect width="64" height="64" rx="15" fill="#2AA5A0" />
+  <path
+    d="M40 8 L18 36 h12 L24 56 L46 28 H34 Z"
+    fill="#FFC93C"
+    stroke="#0F2C3D"
+    stroke-width="3.5"
+    stroke-linejoin="round"
+  />
+</svg>

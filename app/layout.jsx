@@ -1,6 +1,7 @@
 import "./globals.css";
 import { Fredoka, Baloo_2 } from "next/font/google";
 import PemuatKonten from "@/components/PemuatKonten";
+import { alamatSitus } from "@/lib/situsUrl";
 
 /**
  * Font diunduh SEKALI saat build lalu disajikan dari asal yang sama dengan
@@ -40,9 +41,10 @@ const baloo = Baloo_2({
 });
 
 // Alamat situs dipakai untuk tautan absolut pada OpenGraph dan sitemap.
-// Saat di-host, atur NEXT_PUBLIC_SITE_URL pada berkas .env.local atau pada
-// pengaturan lingkungan host, misalnya https://zippyverse.vercel.app
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+// Bila NEXT_PUBLIC_SITE_URL tidak diisi, lib/situsUrl.js memakai alamat
+// produksi yang dicatat Vercel, sehingga pratinjau tautan di WhatsApp dan
+// Twitter tetap menunjuk ke situs sungguhan - bukan ke localhost.
+const SITE_URL = alamatSitus();
 
 const DESKRIPSI =
   "Game edukasi web untuk anak SD bersama Zippy. Lima pulau petualangan, misi 3 menit, koin, dan kostum. Belajar sambil bermain di Planet Luminara!";
