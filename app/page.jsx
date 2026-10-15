@@ -584,9 +584,11 @@ export default function LandingPage() {
                 <span className="hidden max-w-[min(46vw,15rem)] truncate rounded-full bg-white/12 px-3 py-2 text-xs font-black text-zippy-mint sm:inline-block">
                   {pendamping.email}
                 </span>
+                {/* `py-2.5` (bukan `py-2`): 36 px terlalu kecil bagi ibu jari
+                    anak. 40 px adalah batas terendah yang masih nyaman. */}
                 <button
                   onClick={keluar}
-                  className="rounded-full border-2 border-white/35 px-4 py-2 text-sm font-black text-white transition hover:border-white/70 hover:bg-white/10"
+                  className="rounded-full border-2 border-white/35 px-4 py-2.5 text-sm font-black text-white transition hover:border-white/70 hover:bg-white/10"
                 >
                   Keluar
                 </button>
@@ -597,7 +599,7 @@ export default function LandingPage() {
                   unlockAudio();
                   router.push("/daftar");
                 }}
-                className="rounded-full bg-zippy-yellow px-4 py-2 text-sm font-black text-zippy-navy transition hover:brightness-105"
+                className="rounded-full bg-zippy-yellow px-4 py-2.5 text-sm font-black text-zippy-navy transition hover:brightness-105"
               >
                 {ready && adaSimpanan ? "Masuk" : "Daftar"}
               </button>
@@ -750,7 +752,7 @@ export default function LandingPage() {
                     {(pendamping.email || "?").charAt(0).toUpperCase()}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-black uppercase tracking-wider text-zippy-mint">
+                    <p className="text-xs font-black uppercase tracking-wider text-zippy-mint">
                       {modePengelola ? "Akun Admin Khusus" : "Akun Pendamping"}
                     </p>
                     <p className="truncate font-display text-lg font-bold text-white">
@@ -886,7 +888,7 @@ export default function LandingPage() {
                 </div>
               )}
 
-              <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-bold text-white/50">
+              <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-bold text-white/50">
                 <span className="inline-flex items-center gap-1">
                   <Check className="h-3.5 w-3.5 text-zippy-mint" strokeWidth={3.5} />
                   Kemajuan tiap anak terpisah
@@ -947,7 +949,7 @@ export default function LandingPage() {
                   }`}
                 >
                   <span
-                    className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${
+                    className={`inline-block rounded-full px-2.5 py-1 text-xs font-black uppercase tracking-wide ${
                       i === 1 ? "bg-zippy-yellow text-zippy-navy" : "bg-white/15 text-white/70"
                     }`}
                   >
@@ -1095,7 +1097,7 @@ export default function LandingPage() {
                   />
                 </span>
                 <p className="mt-3 font-display text-sm font-bold text-white">{p.name}</p>
-                <p className="mt-1 text-[11px] font-semibold leading-snug text-white/55">
+                <p className="mt-1 text-xs font-semibold leading-snug text-white/55">
                   {p.desc}
                 </p>
               </motion.div>

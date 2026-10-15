@@ -240,17 +240,22 @@ export default function ProfilPage() {
                     loading="lazy"
                     decoding="async"
                   />
-                  <span className="text-center text-[10px] font-black leading-tight text-zippy-navy sm:text-xs">
+                  {/* Ukuran huruf naik dari 10/9 px ke 12 px: nama dan
+                      keistimewaan kostum adalah penanda utama yang harus
+                      terbaca anak SD, dan pada layar 320 px ukuran lama tidak
+                      lagi terbaca. `sm:` tidak diperlukan lagi karena ukuran
+                      ponsel dan tablet kini sama. */}
+                  <span className="text-center text-xs font-black leading-tight text-zippy-navy">
                     {c.name}
                   </span>
                   {c.perk && (
-                    <span className="text-center text-[9px] font-bold leading-tight text-zippy-teal sm:text-[10px]">
+                    <span className="text-center text-xs font-bold leading-tight text-zippy-teal">
                       {c.perk}
                     </span>
                   )}
                   {!has && (
                     <span
-                      className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black ${
+                      className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-black ${
                         kurangKoin
                           ? "bg-zippy-navy/10 text-zippy-navy/45"
                           : "bg-zippy-teal/15 text-zippy-navy"

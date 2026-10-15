@@ -372,7 +372,7 @@ export default function PetaPage() {
               play("pop");
               router.push("/");
             }}
-            className="order-1 flex shrink-0 items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-white transition hover:bg-white/20"
+            className="order-1 flex shrink-0 items-center gap-2 rounded-full bg-white/10 px-3 py-2.5 text-white transition hover:bg-white/20"
             aria-label="Kembali ke beranda"
           >
             <Home className="h-5 w-5" strokeWidth={2.6} />
@@ -400,12 +400,14 @@ export default function PetaPage() {
           </div>
 
           <div className="order-2 ml-auto flex shrink-0 items-center gap-2 sm:order-3 sm:ml-auto">
+            {/* `py-2.5` agar tinggi sentuh menyentuh 40 px; pada `py-2`
+                tombol ini hanya 36 px dan sulit ditekan anak. */}
             <button
               onClick={() => {
                 play("pop");
                 setShop(true);
               }}
-              className="flex items-center gap-2 rounded-full bg-zippy-yellow px-3 py-2 text-sm font-black text-zippy-navy btn-pop"
+              className="flex items-center gap-2 rounded-full bg-zippy-yellow px-3 py-2.5 text-sm font-black text-zippy-navy btn-pop"
             >
               <Shirt className="h-5 w-5" strokeWidth={2.8} />
               <span className="hidden sm:inline">Toko</span>
@@ -489,7 +491,7 @@ export default function PetaPage() {
                 );
               })}
             </span>
-            <span className="mt-1 block text-[11px] font-bold leading-tight text-white/55">
+            <span className="mt-1 block text-xs font-bold leading-tight text-white/55">
               Hari ke-{hadiah.day} ·{" "}
               {hadiah.claimedToday
                 ? "Sudah diambil. Kembali besok ya!"
@@ -540,7 +542,7 @@ export default function PetaPage() {
                   {koinPeti(tingkatPeti)} koin
                 </span>
               </span>
-              <span className="mt-1 block text-[11px] font-bold leading-tight text-white/55">
+              <span className="mt-1 block text-xs font-bold leading-tight text-white/55">
                 {doneCount} pulau sudah tamat · Peti ke-{tingkatPeti}
               </span>
             </span>
@@ -647,7 +649,7 @@ export default function PetaPage() {
             </span>
           </span>
           {dailyDone && (
-            <span className="ml-auto shrink-0 rounded-full bg-emerald-400 px-2 py-1 text-[10px] font-black text-zippy-navy">
+            <span className="ml-auto shrink-0 rounded-full bg-emerald-400 px-2 py-1 text-xs font-black text-zippy-navy">
               SELESAI
             </span>
           )}
@@ -803,9 +805,14 @@ export default function PetaPage() {
                     ✦
                   </span>
 
+                  {/* Sembilan ikon pulau berada jauh di bawah lipatan layar
+                      (y ≈ 597–941 pada viewport 740px). Tanpa `loading="lazy"`
+                      peramban mengunduh semuanya sekaligus di awal, menahan
+                      muatan peta yang justru harus tampil paling cepat. */}
                   <img
                     src={isl.icon}
                     decoding="async"
+                    loading="lazy"
                     alt={isl.name}
                     className={`h-24 w-24 object-contain drop-shadow-[0_8px_14px_rgba(0,0,0,0.45)] sm:h-28 sm:w-28 ${
                       berikut ? "animate-island-invite" : ""
@@ -817,6 +824,7 @@ export default function PetaPage() {
                   <img
                     src={isl.icon}
                     decoding="async"
+                    loading="lazy"
                     alt={isl.name}
                     className="h-24 w-24 object-contain opacity-30 grayscale drop-shadow-[0_8px_14px_rgba(0,0,0,0.4)] sm:h-28 sm:w-28"
                   />
@@ -828,8 +836,14 @@ export default function PetaPage() {
                 </div>
               )}
 
+              {/* `whitespace-nowrap` sengaja dihilangkan. Pada 10 px nama
+                  panjang seperti "Pulau Perkenalan" sudah lebih lebar daripada
+                  kartu (96 px), dan begitu hurufnya naik ke 12 px kelebihannya
+                  menjadi puluhan piksel yang menabrak pulau sebelah. Dengan
+                  izin membungkus, pil membatasi dirinya di tepi kartu dan teks
+                  turun ke baris kedua alih-alih menabrak. */}
               <span
-                className={`animate-label-bounce mt-1 whitespace-nowrap rounded-full px-2 py-1 text-[10px] font-black leading-4 shadow-pop sm:px-3 sm:text-xs ${
+                className={`animate-label-bounce mt-1 rounded-full px-2 py-1 text-xs font-black leading-4 shadow-pop sm:px-3 ${
                   open ? "bg-white text-zippy-navy" : "bg-white/15 text-white/60"
                 }`}
                 style={{ animationDelay: `${i * 0.4}s` }}
@@ -837,12 +851,12 @@ export default function PetaPage() {
                 {isl.name}
               </span>
               {berikut && (
-                <span className="mt-1 rounded-full bg-zippy-yellow px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-zippy-navy sm:text-[10px]">
+                <span className="mt-1 rounded-full bg-zippy-yellow px-2 py-0.5 text-xs font-black uppercase tracking-wide text-zippy-navy">
                   Main di sini
                 </span>
               )}
               {isDone && (
-                <span className="mt-1 rounded-full bg-emerald-400 px-2 py-0.5 text-[10px] font-black text-zippy-navy">
+                <span className="mt-1 rounded-full bg-emerald-400 px-2 py-0.5 text-xs font-black text-zippy-navy">
                   SELESAI
                 </span>
               )}
@@ -905,7 +919,7 @@ export default function PetaPage() {
                 <h2 className="mt-2 font-display text-2xl font-bold text-white">{sel.name}</h2>
                 <p className="text-sm font-bold text-zippy-mint">{sel.subject}</p>
                 {sel.soon && (
-                  <span className="mt-3 inline-block rounded-full bg-zippy-yellow px-3 py-1 text-[11px] font-black text-zippy-navy">
+                  <span className="mt-3 inline-block rounded-full bg-zippy-yellow px-3 py-1 text-xs font-black text-zippy-navy">
                     SEGERA HADIR
                   </span>
                 )}
@@ -936,7 +950,7 @@ export default function PetaPage() {
                   )}
                 </div>
                 {bolehAdmin && (
-                  <p className="mt-3 rounded-2xl bg-zippy-navy/10 px-3 py-2 text-center text-[11px] font-bold leading-relaxed text-zippy-navy/65">
+                  <p className="mt-3 rounded-2xl bg-zippy-navy/10 px-3 py-2 text-center text-xs font-bold leading-relaxed text-zippy-navy/65">
                     Anda akan masuk ke <b>penyunting isi pulau</b>: teks soal,
                     jawaban, menambah dan menghapus misi. Bukan permainan.
                   </p>
