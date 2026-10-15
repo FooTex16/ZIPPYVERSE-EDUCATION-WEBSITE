@@ -231,6 +231,28 @@ export default function MissionDragCount({ mission, onDone, onScore }) {
               animate={shake ? { x: [0, -10, 10, -6, 6, 0] } : { x: 0 }}
               transition={{ duration: 0.45 }}
               onPointerDown={(e) => e.preventDefault()}
+              /* Kotak jawaban dulu berupa `div` biasa: bisa diklik, tetapi
+                 tidak pernah bisa dijepit fokus karena tidak punya `role`,
+                 `tabIndex`, maupun `onKeyDown`. Akibatnya anak yang bermain
+                 dengan papan ketik (atau pembaca layar) berhasil memilih
+                 angka lewat tombolnya, lalu macet - `attempt()` tidak pernah
+                 terpanggil dan misi tak bisa diselesaikan. Tiga atribut di
+                 bawah menyusulinya tanpa mengubah bentuk maupun animasinya. */
+              role="button"
+              tabIndex={0}
+              aria-label={
+                placed !== null
+                  ? "Jawaban sudah diletakkan"
+                  : selected === null
+                  ? "Kotak jawaban - pilih dulu salah satu angka"
+                  : `Letakkan angka ${selected} di sini`
+              }
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                // Cegah spasi menggulir halaman, sama seperti tombol asli.
+                e.preventDefault();
+                if (selected !== null) attempt(selected);
+              }}
               className={`grid h-24 w-40 cursor-pointer place-items-center rounded-3xl border-4 border-dashed transition ${
                 placed !== null
                   ? "border-zippy-yellow bg-zippy-yellow text-zippy-navy"
