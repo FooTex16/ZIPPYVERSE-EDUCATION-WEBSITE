@@ -315,8 +315,8 @@ docs:  ...
 chore: ...
 ```
 
-Kebiasaan yang sudah terbentuk pada 35 komit (14–15 Okt 2026):
-`fix` 18 · `feat` 12 · `docs` 2 · `chore` 2. Rata-rata panjang pesan ±65
+Kebiasaan yang sudah terbentuk pada 38 komit (14-15 Okt 2026):
+`fix` 18 · `feat` 12 · `docs` 5 · `chore` 2. Rata-rata panjang pesan ±65
 karakter, tanpa pesan pendek seperti "update" atau "fix" saja.
 
 > **Pembungkus pesan commit:** PowerShell 5.1 menulis UTF-16 bila memakai `>`,
@@ -430,15 +430,20 @@ selalu mengarahkan kembali ke pelajaran SD. Bila AI tidak tersedia,
 
 ### 5.2 · Riwayat iterasi
 
-Riwayat git memuat **35 komit** pada 14–15 Okt 2026:
+Riwayat git memuat **38 komit** pada 14-15 Okt 2026:
 
 | Prefix | Jumlah |
 | --- | --- |
 | `fix` | 18 |
 | `feat` | 12 |
-| `docs` | 2 |
+| `docs` | 5 |
 | `chore` | 2 |
 | non-konvensional | 1 |
+
+> Angka di atas adalah **cuplikan per 15 Okt 2026**. Ia otomatis basi begitu
+> ada komit baru — termasuk komit yang memperbarui baris ini sendiri. Jalankan
+> `git rev-list --count HEAD` dan `git log --pretty=format:"%s" | ...` untuk
+> angka terkini, sama seperti cara angka ini diperoleh.
 
 Pola siklusnya: **bangun → pakai → rusak → perbaiki**. Yang membuat pola ini
 sehat: sebagian perbaikan bug menyentuh `tests/` sekaligus, sehingga bug
@@ -498,6 +503,6 @@ Kesalahan berulang yang layak diingat:
 
 *Dokumen ini disusun 15 Okt 2026 dari pembacaan langsung `package.json`,
 struktur `app/` · `components/` · `lib/` · `public/` · `tests/`, isi
-`tailwind.config.js` dan `app/globals.css`, `git log` (35 komit), serta
+`tailwind.config.js` dan `app/globals.css`, `git log` (38 komit), serta
 `npm test` (184/184 lulus). Bagian bertanda `[TINJAU]` menunggu konfirmasi
 pemilik proyek dan belum boleh dianggap final.*
