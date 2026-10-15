@@ -125,8 +125,11 @@ function PenyuntingPutaran({ tipe, r, ubah }) {
 
   return (
     <div className="rounded-2xl border-2 border-zippy-navy/12 bg-zippy-navy/[0.03]">
+      {/* Tombol ini membuka/tutup isi butir soal yang terlipat di bawahnya,
+          sehingga `aria-expanded` meniru keadaan yang sebenarnya. */}
       <button
         onClick={() => setBuka((b) => !b)}
+        aria-expanded={buka}
         className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
       >
         <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-zippy-navy text-[11px] font-black text-zippy-yellow">

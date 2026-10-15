@@ -44,7 +44,7 @@ export default function Hud({
       title="Buka profil"
       className="flex items-center gap-1.5 rounded-full border-2 border-transparent py-0.5 pl-0.5 pr-2 transition hover:border-zippy-teal/40 active:scale-95 sm:gap-2 sm:pr-3"
     >
-      <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-zippy-teal/20 ring-2 ring-zippy-teal/40 sm:h-9 sm:w-9">
+      <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-zippy-teal/20 ring-2 ring-zippy-teal/40">
         <img
           src={kostum.img}
           alt=""
@@ -126,7 +126,7 @@ export default function Hud({
         <button
           onClick={onToggleSound}
           aria-label={soundOn ? "Matikan suara" : "Nyalakan suara"}
-          className="grid h-8 w-8 place-items-center rounded-full bg-zippy-teal/15 text-zippy-teal transition hover:bg-zippy-teal/25 active:scale-90 sm:h-9 sm:w-9"
+          className="grid h-10 w-10 place-items-center rounded-full bg-zippy-teal/15 text-zippy-teal transition hover:bg-zippy-teal/25 active:scale-90"
         >
           {soundOn ? (
             <Volume2 className="h-5 w-5" strokeWidth={2.6} />
@@ -143,7 +143,7 @@ export default function Hud({
           onClick={onToggleMotion}
           aria-label={motionOn ? "Kurangi animasi" : "Aktifkan animasi penuh"}
           title={motionOn ? "Animasi penuh" : "Animasi ringan"}
-          className={`grid h-8 w-8 place-items-center rounded-full transition active:scale-90 sm:h-9 sm:w-9 ${
+          className={`grid h-10 w-10 place-items-center rounded-full transition active:scale-90 ${
             motionOn
               ? "bg-zippy-yellow/40 text-zippy-navy"
               : "bg-zippy-navy/10 text-zippy-navy/45"

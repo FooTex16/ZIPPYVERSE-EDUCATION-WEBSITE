@@ -99,11 +99,17 @@ export default function SpeechMenu() {
 
   return (
     <div ref={wrapRef} className="relative">
+      {/* Tombol yang menurunkan daftar pilihan di bawahnya. Ia wajib
+          memberitahu pembaca layar keadaan daftar itu - selama ini `buka`
+          hanya hidup di state React dan tidak pernah sampai ke
+          aksesibilitas. */}
       <button
         onClick={() => setBuka((b) => !b)}
         aria-label={aktif ? "Pengaturan suara baca soal aktif" : "Pengaturan suara baca soal mati"}
+        aria-expanded={buka}
+        aria-haspopup="menu"
         title="Suara baca soal"
-        className={`grid h-8 w-8 place-items-center rounded-full transition active:scale-90 sm:h-9 sm:w-9 ${
+        className={`grid h-10 w-10 place-items-center rounded-full transition active:scale-90 ${
           aktif ? "bg-zippy-yellow/50 text-zippy-navy" : "bg-zippy-navy/10 text-zippy-navy/45"
         }`}
       >

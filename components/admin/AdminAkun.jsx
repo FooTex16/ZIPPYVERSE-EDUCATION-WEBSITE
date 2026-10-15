@@ -401,7 +401,11 @@ export default function AdminAkun() {
           <TombolKecil onClick={muat} ikon={RefreshCw} netral disabled={sibuk}>
             {sibuk ? "Memuat..." : "Muat Ulang"}
           </TombolKecil>
-          <TombolKecil onClick={() => setBukaFormAkun((v) => !v)} ikon={UserPlus}>
+          <TombolKecil
+            onClick={() => setBukaFormAkun((v) => !v)}
+            ikon={UserPlus}
+            aria-expanded={bukaFormAkun}
+          >
             {bukaFormAkun ? "Batal" : "Tambah Pendamping"}
           </TombolKecil>
         </div>
@@ -536,8 +540,12 @@ export default function AdminAkun() {
                 key={p.id}
                 className="rounded-2xl border-2 border-zippy-navy/10 bg-white p-3"
               >
+                {/* Baris akun ini bisa dibuka-ditutup; tanpa `aria-expanded`
+                    pembaca layar tidak tahu isi daftar anaknya sedang
+                    ditampilkan atau disembunyikan. */}
                 <button
                   onClick={() => setBuka(terbuka ? null : p.id)}
+                  aria-expanded={terbuka === p.id}
                   className="flex w-full items-center gap-3 text-left"
                 >
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zippy-teal/15 text-zippy-teal">
@@ -1010,9 +1018,13 @@ function Kotak({ judul, children }) {
   );
 }
 
-function TombolKecil({ onClick, ikon: Ikon, children, netral = false, disabled = false }) {
+// `...sisa` diteruskan apa adanya ke `<button>` sehingga atribut ARIA seperti
+// `aria-expanded` bisa dipasang dari tempat pemakaian tanpa menambah prop
+// baru untuk setiap kebutuhan.
+function TombolKecil({ onClick, ikon: Ikon, children, netral = false, disabled = false, ...sisa }) {
   return (
     <button
+      {...sisa}
       onClick={onClick}
       disabled={disabled}
       className={`flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black text-white transition active:scale-95 disabled:opacity-40 ${

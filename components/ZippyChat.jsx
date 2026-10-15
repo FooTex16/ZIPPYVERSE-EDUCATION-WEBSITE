@@ -130,7 +130,10 @@ export default function ZippyChat() {
 
   return (
     <>
-      {/* Tombol mengambang */}
+      {/* Tombol mengambang. Ini pengendali panel: ia membuka dan menutup
+          jendela percakapan di atasnya. Tanpa `aria-expanded`, pembaca layar
+          hanya menyebut "Ngobrol dengan Zippy" tanpa pernah memberi tahu
+          apakah jendelanya sedang terbuka atau tertutup. */}
       <motion.button
         onClick={() => {
           const buka = !open;
@@ -145,6 +148,7 @@ export default function ZippyChat() {
         }}
         whileTap={{ scale: 0.88 }}
         aria-label="Ngobrol dengan Zippy"
+        aria-expanded={open}
         className="fixed bottom-5 right-5 z-40 grid h-16 w-16 place-items-center rounded-full bg-zippy-yellow text-zippy-navy shadow-pop-lg transition hover:brightness-105 animate-pulseGlow"
       >
         {open ? (
