@@ -13,3 +13,5 @@ next-env.d.ts
 # Berkas sementara pipeline suara. Bisa dibuat ulang dengan: npm run audio
 scripts/.tmp
 scripts/.teksSoal.json
+# Berkas kunci sementara Microsoft Word
+~$*
