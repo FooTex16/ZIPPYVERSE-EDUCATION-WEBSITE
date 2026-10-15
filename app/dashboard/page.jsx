@@ -130,9 +130,14 @@ export default function DashboardPage() {
           Wadahnya (main) memakai overflow-x-clip supaya sticky bekerja. */}
       <header className="sticky top-0 z-40 bg-zippy-navy/55 p-3 backdrop-blur-md sm:p-4">
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Kembali ke peta. `aria-label` wajib karena kata "Kembali" ikut
+              disembunyikan `hidden sm:inline` di layar kecil - tanpa itu tombol
+              hanya berisi ikon panah dan pembaca layar tak punya nama untuknya.
+              `py-2.5` menaikkan tinggi sentuh 36 px -> 40 px. */}
           <button
             onClick={() => router.push("/peta")}
-            className="flex shrink-0 items-center gap-2 rounded-full bg-white/10 px-3 py-2 font-black text-white transition hover:bg-white/20 sm:px-4"
+            aria-label="Kembali ke peta"
+            className="flex shrink-0 items-center gap-2 rounded-full bg-white/10 px-3 py-2.5 font-black text-white transition hover:bg-white/20 sm:px-4"
           >
             <ArrowLeft className="h-5 w-5" strokeWidth={3} />
             <span className="hidden sm:inline">Kembali</span>
@@ -140,12 +145,16 @@ export default function DashboardPage() {
           <h1 className="min-w-0 flex-1 truncate text-center font-display text-lg font-bold text-white sm:text-2xl">
             Dasbor Orang Tua
           </h1>
+          {/* Edit profil. Ikon di dalamnya cuma 16 px, jadi dengan `py-2`
+              tingginya 32 px - dinaikkan ke 40 px. Kata "Edit Profil" juga
+              disembunyikan `hidden sm:inline`, maka tombol diberi `aria-label`. */}
           <button
             onClick={() => {
               play("pop");
               router.push("/profil");
             }}
-            className="flex shrink-0 items-center gap-2 rounded-full bg-zippy-yellow px-3 py-2 text-sm font-black text-zippy-navy transition hover:brightness-105"
+            aria-label="Edit profil"
+            className="flex shrink-0 items-center gap-2 rounded-full bg-zippy-yellow px-3 py-3 text-sm font-black text-zippy-navy transition hover:brightness-105"
           >
             <Pencil className="h-4 w-4" strokeWidth={2.8} />
             <span className="hidden sm:inline">Edit Profil</span>
@@ -168,7 +177,7 @@ export default function DashboardPage() {
           <div className="min-w-0 flex-1 text-center sm:text-left">
             <p className="flex items-center justify-center gap-1 text-sm font-bold text-white/55 sm:justify-start">
               Laporan belajar untuk
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-black text-zippy-mint">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs font-black text-zippy-mint">
                 <Pencil className="h-3 w-3" strokeWidth={3} /> Ubah
               </span>
             </p>

@@ -102,12 +102,18 @@ export default function ProfilPage() {
       {/* Header sticky: judul dan tombol kembali tetap terlihat saat digulir */}
       <header className="sticky top-0 z-40 bg-zippy-navy/55 p-3 backdrop-blur-md sm:p-4">
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Tombol kembali. Dua perbaikan sekaligus:
+              1. `aria-label` - kata "Peta" disembunyikan `hidden sm:inline`
+                 pada layar kecil, jadi tanpa label tombol ini benar-benar
+                 tanpa nama bagi pembaca layar (hanya ikon panah).
+              2. `py-2.5` - tinggi sentuh naik dari 36 px ke 40 px. */}
           <button
             onClick={() => {
               play("pop");
               router.push("/peta");
             }}
-            className="flex shrink-0 items-center gap-2 rounded-full bg-white/10 px-3 py-2 font-black text-white transition hover:bg-white/20 sm:px-4"
+            aria-label="Kembali ke peta"
+            className="flex shrink-0 items-center gap-2 rounded-full bg-white/10 px-3 py-2.5 font-black text-white transition hover:bg-white/20 sm:px-4"
           >
             <ArrowLeft className="h-5 w-5" strokeWidth={3} />
             <span className="hidden sm:inline">Peta</span>
@@ -183,12 +189,15 @@ export default function ProfilPage() {
               <Shirt className="h-5 w-5 text-zippy-yellow" strokeWidth={2.8} />
               Ganti Avatar
             </h3>
+            {/* Tombol Toko kostum. `py-3` (bukan `py-1.5`): ikon di dalamnya
+                hanya 16 px, sehingga dengan padding lama tombol ini tingginya
+                28 px - jauh di bawah 40 px yang masih nyaman ditekan jari anak. */}
             <button
               onClick={() => {
                 play("pop");
                 setShop(true);
               }}
-              className="btn-pop flex items-center gap-1 rounded-full bg-zippy-yellow px-3 py-1.5 text-xs font-black text-zippy-navy"
+              className="btn-pop flex items-center gap-1 rounded-full bg-zippy-yellow px-3 py-3 text-xs font-black text-zippy-navy"
             >
               <Shirt className="h-4 w-4" strokeWidth={2.8} />
               Toko

@@ -197,10 +197,11 @@ export default function HalamanDaftar() {
       <SpaceBackdrop />
 
       <div className="relative z-10 w-full max-w-md">
+        {/* `py-3` mengangkat tinggi sentuh dari 36 px ke 44 px. */}
         <Link
           href="/"
           onClick={() => unlockAudio()}
-          className="mx-auto mb-5 flex w-fit items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white transition hover:bg-white/20"
+          className="mx-auto mb-5 flex w-fit items-center gap-2 rounded-full bg-white/10 px-4 py-3 text-sm font-black text-white transition hover:bg-white/20"
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={3} />
           Kembali
@@ -372,13 +373,16 @@ export default function HalamanDaftar() {
 
           <p className="mt-4 text-center text-sm font-bold text-zippy-navy/60">
             {mode === "daftar" ? "Sudah punya akun? " : "Belum punya akun? "}
+            {/* Tautan ganti mode ini semula hanya setinggi satu baris teks
+                (20 px) sehingga nyaris tak bisa ditekan. `inline-flex min-h-10`
+                menaikkannya ke 40 px tanpa mengubah teks di sekitarnya. */}
             <button
               type="button"
               onClick={() => {
                 setMode(mode === "daftar" ? "masuk" : "daftar");
                 setPesan(null);
               }}
-              className="font-black text-zippy-teal underline underline-offset-4"
+              className="inline-flex min-h-10 items-center px-1 font-black text-zippy-teal underline underline-offset-4"
             >
               {mode === "daftar" ? "Masuk" : "Daftar"}
             </button>
