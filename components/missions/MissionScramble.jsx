@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Zippy from "../Zippy";
 import { play } from "@/lib/sfx";
@@ -132,11 +132,20 @@ export default function MissionScramble({ mission, onDone }) {
     };
   }, [busy, solved]);
 
-  const pickLetter = (id) => {
-    if (busy || solved || done || pickedIds.includes(id)) return;
-    play("tap");
-    setPickedIds((p) => [...p, id]);
-  };
+  /* Dibungkus `useCallback` dengan empat keadaan yang memang dipakai di
+     dalamnya. Bila dibiarkan sebagai fungsi biasa, identitasnya berubah tiap
+     render sehingga efek dukungan papan ketik di bawah ikut memasang dan
+     melepas pendengar `window` tanpa henti. Dengan pembungkus ini efek hanya
+     berjalan ulang ketika keadaannya benar-benar berubah - sekaligus
+     memuaskan aturan `react-hooks/exhaustive-deps`. */
+  const pickLetter = useCallback(
+    (id) => {
+      if (busy || solved || done || pickedIds.includes(id)) return;
+      play("tap");
+      setPickedIds((p) => [...p, id]);
+    },
+    [busy, solved, done, pickedIds]
+  );
 
   const unpick = (id) => {
     if (busy || solved || done) return;
@@ -157,7 +166,7 @@ export default function MissionScramble({ mission, onDone }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [done, solved, busy, round, letters, pickedIds]);
+  }, [done, solved, busy, round, letters, pickedIds, pickLetter]);
 
   // Yang dibacakan adalah petunjuk kata, karena anak perlu tahu kata apa
   // yang harus disusun.
