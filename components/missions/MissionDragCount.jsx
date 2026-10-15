@@ -50,7 +50,7 @@ export default function MissionDragCount({ mission, onDone, onScore }) {
   // anak yang memainkan misi ini berulang kali tidak mendengar kalimat yang
   // persis sama terus-menerus. Pilihannya deterministik (judul + ronde), jadi
   // tidak ada risiko teks berganti saat render ulang atau hydration.
-  useBacakanSoal(petunjukUntuk(mission.title, idx), 350, idx);
+  useBacakanSoal(petunjukUntuk(mission.title, idx), 350, idx, petunjukUntuk(mission.title, idx + 1));
 
   const attempt = useCallback(
     (value) => {

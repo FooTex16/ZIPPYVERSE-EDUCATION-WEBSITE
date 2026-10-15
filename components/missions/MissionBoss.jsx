@@ -46,7 +46,7 @@ export default function MissionBoss({ mission, onDone }) {
 
   // Bos membacakan soalnya saja. Petunjuk tetap ditampilkan di layar sehingga
   // tidak dibacakan ulang, supaya suara tidak bertumpuk saat suasana boss.
-  useBacakanSoal(round?.q);
+  useBacakanSoal(round?.q, 350, "", rounds[idx + 1]?.q);
 
   const answer = useCallback(
     (val) => {

@@ -147,7 +147,7 @@ export default function MissionOrder({ mission, onDone }) {
 
   // Dibacakan petunjuk urutannya, bukan daftar langkahnya, supaya anak
   // tetap harus berpikir sendiri mana yang paling awal.
-  useBacakanSoal(round?.hint);
+  useBacakanSoal(round?.hint, 350, "", rounds[idx + 1]?.hint);
 
   if (done) {
     return (

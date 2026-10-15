@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ZIPPY_IMG } from "@/lib/gameData";
+import { siapkanGambarMaskot } from "@/lib/preload";
 
 /**
  * Komponen maskot Zippy.
@@ -53,6 +55,14 @@ export default function Zippy({
     berlari: { dur: 0.9, lift: 14, tilt: 8, breathe: 1.03, delay: 0 },
   };
   const p = profile[mood] || profile.bahagia;
+
+  // Gambar seluruh ekspresi disiapkan lebih dulu, selagi perangkat sedang
+  // menganggur. Tanpa ini, berganti ekspresi melepas <img> lama lalu
+  // memasang yang baru - dan selama berkasnya belum sampai, anak melihat
+  // kotak kosong di tempat wajah Zippy.
+  useEffect(() => {
+    siapkanGambarMaskot();
+  }, []);
 
   const idleAnim =
     {

@@ -95,7 +95,7 @@ export default function MissionBlitz({ mission, onDone }) {
   }, [answer, opts]);
 
   // Misi ini berpacu dengan waktu, jadi soal dibacakan sedikit lebih cepat.
-  useBacakanSoal(round?.q, 250);
+  useBacakanSoal(round?.q, 250, "", rounds[(idx + 1) % rounds.length]?.q);
 
   const pct = Math.max(0, (timeLeft / duration) * 100);
   const danger = timeLeft <= 8;

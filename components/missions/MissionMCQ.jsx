@@ -96,7 +96,7 @@ export default function MissionMCQ({ mission, onDone }) {
 
   // Soal dibacakan dari rekaman. Saat anak salah, yang dibacakan hanya
   // petunjuknya saja karena soalnya tadi sudah sempat dibacakan.
-  useBacakanSoal(showHint && round.hint ? round.hint : round?.q);
+  useBacakanSoal(showHint && round.hint ? round.hint : round?.q, 350, "", rounds[idx + 1]?.q);
 
   if (done) {
     return (

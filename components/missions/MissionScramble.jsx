@@ -161,7 +161,7 @@ export default function MissionScramble({ mission, onDone }) {
 
   // Yang dibacakan adalah petunjuk kata, karena anak perlu tahu kata apa
   // yang harus disusun.
-  useBacakanSoal(round?.hint);
+  useBacakanSoal(round?.hint, 350, "", rounds[idx + 1]?.hint);
 
   if (done) {
     return (
