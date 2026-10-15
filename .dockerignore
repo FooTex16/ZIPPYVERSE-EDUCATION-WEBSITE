@@ -1,0 +1,38 @@
+# Berkas yang tidak perlu ikut masuk ke image Docker.
+# Tujuannya dua: mengecilkan image dan mencegah rahasia ikut terbawa.
+
+# Dependensi & hasil build -- dipasang serta dibangun ulang di dalam image.
+node_modules
+.next
+npm-debug.log*
+
+# Berkas rahasia. ENV harus diberikan lewat build-arg / dasbor Dokploy,
+# bukan disalin dari mesin pengembang.
+.env
+.env.local
+.env.*.local
+
+# Kontrol versi.
+.git
+.gitignore
+
+# Dokumen laporan & bukti cetak. Tidak dibaca aplikasi, tetapi berat
+# (±21 MB PDF) dan hanya memperlambat build.
+DOKUMEN-ACUAN-AI
+AGENTS.md
+ANALISIS-KESESUAIAN.md
+CEK-3-KOMPONEN.md
+CHECKLIST-FINAL.md
+JURNAL-PROMPT.md
+JURNAL-PROMPT-DAN-LOG-MENTAH.md
+LAPORAN-PAKET-SUBMIT.md
+LOG-PROMPT-MENTAH.md
+PROMPT_METEOR_LEONARDO.md
+MIGRASI.sql
+
+# Pengujian dijalankan di mesin pengembang, bukan di kontainer produksi.
+tests
+
+# Berkas ini sendiri.
+Dockerfile
+.dockerignore

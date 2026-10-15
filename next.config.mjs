@@ -3,6 +3,20 @@ const nextConfig = {
   reactStrictMode: true,
 
   /**
+   * Hasil build berdiri sendiri tanpa perlu seluruh node_modules.
+   *
+   * Dibutuhkan oleh Dockerfile: tanpa ini, image harus membawa seluruh
+   * node_modules (ratusan MB) karena `next start` membutuhkannya. Dengan
+   * `standalone`, .next/standalone sudah memuat hanya modul yang benar-benar
+   * dipakai, ditambah berkas server.js -- image akhir jauh lebih kecil dan
+   * kontainer mulai lebih cepat.
+   *
+   * `next start` biasa tetap berfungsi untuk pengembangan lokal, jadi tidak
+   * ada perilaku yang berubah di mesin pengembang.
+   */
+  output: "standalone",
+
+  /**
    * Masa simpan berkas statis di /public.
    *
    * Vercel (dan kebanyakan host statis) menganggap isi /public selalu bisa
