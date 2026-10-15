@@ -24,6 +24,7 @@ import {
 } from "@/lib/store";
 import { play, unlockAudio, setSfxEnabled } from "@/lib/sfx";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
+import { sinkronMasuk } from "@/lib/syncAnak";
 import { bacaDraf, tulisDraf, adaDraf } from "@/lib/konten";
 import LoadingMeteors from "@/components/LoadingMeteors";
 import BarSettingPeta from "@/components/admin/BarSettingPeta";
@@ -196,6 +197,22 @@ export default function PetaPage() {
       lanjut();
     };
     periksa();
+
+    // Tarik kabar terbaru dari awan: nilai yang disunting pengelola lewat
+    // panel, dan daftar anak yang berubah. Halaman ini sebelumnya tidak
+    // pernah melakukan sinkronisasi sendiri - ia mengandalkan halaman awal
+    // yang membukanya. Akibatnya perangkat yang langsung mendarat di peta
+    // (misal setelah muat ulang halaman di tengah peta) tidak pernah
+    // menerima suntingan pengelola, sampai ia membuka halaman awal dulu.
+    //
+    // Hanya `save` yang diperbarui, bukan penjaga arah di atas: bila
+    // ternyata belum ada anak yang dipilih, `save` tetap null dan pengalihan
+    // ke halaman awal tetap berlaku.
+    if (supabaseEnabled && s.pendamping?.id) {
+      sinkronMasuk()
+        .then(() => setSave((d) => (d ? load() : d)))
+        .catch(() => {});
+    }
 
     // `router` dari `useRouter()` stabil selama berada di halaman yang sama,
     // jadi efek ini tetap hanya berjalan sekali seperti sebelumnya. Dimasukkan

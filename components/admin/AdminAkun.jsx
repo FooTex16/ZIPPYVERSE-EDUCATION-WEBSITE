@@ -50,6 +50,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   Coins,
+  LogIn,
+  KeyRound,
 } from "lucide-react";
 import { tulisAdmin } from "@/lib/adminApi";
 import { play } from "@/lib/sfx";
@@ -59,6 +61,28 @@ const MAKS_ANAK = 6;
 
 /** Sama dengan batas pada tambahAnak(): 18 karakter. */
 const MAKS_NAMA = 18;
+
+/**
+ * Level TURUNAN dari XP, bukan nilai tersendiri: `floor(xp / 100) + 1`.
+ * Rumus yang sama dipakai di components/Hud.jsx, app/dashboard, dan
+ * components/ZippyChat.jsx - sengaja tidak diduplikasi di tempat lain
+ * selain tiga huruf di bawah ini.
+ *
+ * Karena itu kolom "Level" di bawah tidak pernah menyimpan angka apa pun.
+ * Ia hanya menulis XP ke tingkat awal level yang diminta. Bila level
+ * disimpan sebagai kolom sendiri, angka itu akan "berarti sesuatu" sementara
+ * XP-nya berkata lain - dan layar mana yang dipercaya pemain?
+ */
+const XP_PER_LEVEL = 100;
+
+/** Level tertinggi yang mungkin, mengikuti batas XP 10.000.000 di server. */
+const MAKS_LEVEL = Math.floor(10000000 / XP_PER_LEVEL) + 1;
+
+/** Level yang menghasil dari sejumlah XP. */
+const levelDari = (xp) => Math.floor((Number(xp) || 0) / XP_PER_LEVEL) + 1;
+
+/** XP terendah yang membuat seseorang mencapai level tertentu. */
+const xpLevel = (level) => Math.max(0, (Math.floor(Number(level) || 1) - 1) * XP_PER_LEVEL);
 
 export default function AdminAkun() {
   const [daftar, setDaftar] = useState(null); // null = masih memuat
@@ -85,6 +109,15 @@ export default function AdminAkun() {
   // satu tombol Enter di formulir bisa mengirim dua aksi sekaligus.
   const [mengeditNilai, setMengeditNilai] = useState(null);
   const [nilaiPemain, setNilaiPemain] = useState({ coins: 0, xp: 0, streak: 1 });
+
+  // Penyunting akun Pendamping: { id, email } untuk ganti surel / kata sandi.
+  //
+  // Terpisah dari kedua penyunting di atas karena menyentuh akun Supabase
+  // Auth, bukan tabel bisnis mana pun. Kata sandi sengaja TIDAK pernah
+  // diambil dari mana pun - ia hanya bisa ditulis, tidak pernah dibaca,
+  // baik oleh panel ini maupun oleh server.
+  const [mengeditAkun, setMengeditAkun] = useState(null);
+  const [nilaiAkun, setNilaiAkun] = useState({ email: "", sandi: "" });
 
   function umumkan(t) {
     setPesan(t);
@@ -247,6 +280,82 @@ export default function AdminAkun() {
       `Nilai ${mengeditNilai.nama} diperbarui. Akan terbaca di perangkatnya saat berikutnya masuk.`
     );
     if (ok) setMengeditNilai(null);
+  }
+
+  // ---------------------------------------------------------- Akun Pendamping
+
+  function mulaiEditAkun(p) {
+    setMengeditAkun({ id: p.id, email: p.email });
+    // Kolom sandi sengaja dimulai KOSONG, bukan dari nilai mana pun: sandi
+    // memang tidak pernah bisa dibaca - baik dari server maupun dari
+    // Supabase. Kosong berarti "tidak diganti".
+    setNilaiAkun({ email: p.email, sandi: "" });
+  }
+
+  async function simpanAkun() {
+    if (!mengeditAkun) return;
+
+    /** Badan permintaan: hanya kolom yang benar-benar mau diganti. */
+    const isi = { id: mengeditAkun.id };
+
+    const email = nilaiAkun.email.trim().toLowerCase();
+    // Bila surelnya tidak berubah sama sekali, jangan dikirim - mengirimnya
+    // berarti meminta Supabase menandai ulang akun yang sudah konfirmasi.
+    if (email && email !== mengeditAkun.email.toLowerCase()) isi.email = email;
+
+    const sandi = nilaiAkun.sandi;
+    if (sandi) isi.sandi = sandi;
+
+    if (isi.email === undefined && isi.sandi === undefined) {
+      galangkan("Tidak ada yang diubah - isi surel atau kata sandi dulu.");
+      return;
+    }
+
+    const bagian = [];
+    if (isi.email !== undefined) bagian.push("surel");
+    if (isi.sandi !== undefined) bagian.push("kata sandi");
+
+    const ok = await jalankan(
+      "pendamping.ubah",
+      isi,
+      `Surel/kata sandi ${mengeditAkun.email} diperbarui (${bagian.join(" dan ")}).`
+    );
+    if (ok) setMengeditAkun(null);
+  }
+
+  /**
+   * Buka sebuah akun Pendamping di tab baru, tanpa mengetik kata sandinya.
+   *
+   * Supabase mengeluarkan tautan masuk sekali pakai yang mengalihkan
+   * peramban ke situs dengan `#access_token` di belakangnya - format yang
+   * memang sudah ditangani sendiri oleh supabase-js, jadi tidak perlu ada
+   * halaman perantara.
+   *
+   * Tautan ini TIDAK mengubah kata sandi apa pun. Keluarga tetap bisa
+   * masuk seperti biasa sesudahnya.
+   */
+  async function loginCepat(p) {
+    if (sibuk) return;
+    setSibuk(true);
+    const r = await tulisAdmin("pendamping.tautanMasuk", { id: p.id });
+    setSibuk(false);
+
+    if (!r.ok) {
+      galangkan(r.galat || "Gagal membuat tautan masuk.");
+      return;
+    }
+    if (!r.tautan) {
+      galangkan("Supabase tidak mengeluarkan tautan masuk untuk akun itu.");
+      return;
+    }
+
+    // `noopener` supaya tab baru tidak bisa menyentuh jendela panel ini.
+    const tab = window.open(r.tautan, "_blank", "noopener,noreferrer");
+    if (!tab) {
+      galangkan("Peramban memblokir tab baru. Izinkan pop-up untuk situs ini lalu coba lagi.");
+      return;
+    }
+    umumkan(`Tab baru dibuka sebagai ${p.email}.`);
   }
 
   // ---------------------------------------------------------- Render
@@ -577,8 +686,28 @@ export default function AdminAkun() {
                       </p>
                     )}
 
-                    {/* Hapus pendamping */}
-                    <div className="mt-4 border-t-2 border-zippy-navy/10 pt-3">
+                    {/* Aksi akun: masuk cepat, sunting surel/sandi, hapus.
+                        Ketiganya sengaja sebaris dan berwarna berbeda - merah
+                        untuk yang tidak bisa dibatalkan, dua sisanya aman
+                        dan bisa diulang sepuasnya. */}
+                    <div className="mt-4 flex flex-wrap gap-2 border-t-2 border-zippy-navy/10 pt-3">
+                      {!p.iniPengelola && (
+                        <button
+                          onClick={() => loginCepat(p)}
+                          disabled={sibuk}
+                          title={`Buka ${p.email} di tab baru tanpa mengetik kata sandi`}
+                          className="flex items-center gap-2 rounded-xl bg-zippy-teal px-4 py-2 text-sm font-black text-white transition hover:brightness-105 active:scale-95 disabled:opacity-40"
+                        >
+                          <LogIn className="h-4 w-4" strokeWidth={3} /> Login Cepat
+                        </button>
+                      )}
+                      <button
+                        onClick={() => mulaiEditAkun(p)}
+                        disabled={sibuk}
+                        className="flex items-center gap-2 rounded-xl bg-zippy-yellow px-4 py-2 text-sm font-black text-zippy-navy transition hover:brightness-105 active:scale-95 disabled:opacity-40"
+                      >
+                        <KeyRound className="h-4 w-4" strokeWidth={3} /> Edit Surel / Sandi
+                      </button>
                       <button
                         onClick={() => hapusPendamping(p)}
                         disabled={sibuk || p.iniPengelola}
@@ -586,13 +715,22 @@ export default function AdminAkun() {
                       >
                         <Trash2 className="h-4 w-4" strokeWidth={3} /> Hapus Akun Ini
                       </button>
-                      {p.iniPengelola && (
-                        <p className="mt-1 flex items-start gap-1.5 text-[11px] font-bold leading-relaxed text-amber-700">
-                          <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={3} />
-                          Tidak bisa dihapus: inilah akun yang sedang membuka panel.
-                        </p>
-                      )}
                     </div>
+
+                    {!p.iniPengelola && (
+                      <p className="mt-2 text-[11px] font-bold leading-relaxed text-zippy-navy/55">
+                        <b>Login Cepat</b> membuka akun ini di tab baru tanpa mengubah
+                        kata sandinya sama sekali. Karena peramban menyimpan sesi per
+                        situs, tab panel ini ikut berpindah ke akun tersebut - masuk
+                        lagi sebagai pengelola setelah selesai melihat-lihat.
+                      </p>
+                    )}
+                    {p.iniPengelola && (
+                      <p className="mt-1 flex items-start gap-1.5 text-[11px] font-bold leading-relaxed text-amber-700">
+                        <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={3} />
+                        Tidak bisa dihapus: inilah akun yang sedang membuka panel.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -614,10 +752,28 @@ export default function AdminAkun() {
           </li>
           <li>
             <b>Tombol &quot;Edit Data&quot; menyunting nilai pemain</b> seorang anak
-            (koin, XP, rentetan bermain) lewat tab <b>Data Akun</b> yang sama.
-            Perubahannya terbaca di perangkat anak itu pada pemasangan akun
-            berikutnya. <b>Pulau tetap tidak bisa dibuka dari sini</b> - ia
-            dibuka lewat permainan, bukan lewat panel.
+            (koin, XP, rentetan bermain, dan level) lewat tab <b>Data Akun</b>{" "}
+            yang sama. Perubahannya terbaca di perangkat anak itu pada
+            pemasangan akun berikutnya. <b>Pulau tetap tidak bisa dibuka dari
+            sini</b> - ia dibuka lewat permainan, bukan lewat panel.
+          </li>
+          <li>
+            <b>Level bukan nilai tersendiri</b> - ia dihitung dari XP dengan
+            rumus yang sama yang dipakai permainan. Mengetik level di panel
+            berarti menyesuaikan XP ke tingkat awal level itu, sehingga keduanya
+            tidak mungkin saling berbeda.
+          </li>
+          <li>
+            <b>&quot;Login Cepat&quot; membuka akun keluarga di tab baru</b> tanpa
+            mengetik kata sandi dan tanpa mengubahnya. Ia memakai tautan masuk
+            sekali pakai dari Supabase. Karena peramban menyimpan sesi per
+            situs, tab panel ini ikut berpindah - masuk lagi sebagai pengelola
+            setelah selesai melihat-lihat.
+          </li>
+          <li>
+            <b>&quot;Edit Surel / Sandi&quot; hanya menulis</b>. Kata sandi yang sudah
+            tersimpan tidak pernah bisa dibaca oleh siapa pun, jadi kolomnya
+            selalu dimulai kosong - kosong berarti tidak diganti.
           </li>
           <li>
             <b>Akun berperan pengelola tampil terpisah</b> dengan lencana{" "}
@@ -688,6 +844,34 @@ export default function AdminAkun() {
                   />
                 </label>
               ))}
+
+              {/* Level: jendela lain ke angka yang SAMA dengan XP.
+                  Mengetik di sini menulis ulang XP ke tingkat awal level itu,
+                  bukan menyimpan angka tersendiri - sebab level memang
+                  dihitung dari XP, dan menyimpannya terpisah berarti membuat
+                  dua angka yang bisa saling berbeda arti. */}
+              <label className="block">
+                <span className="text-[11px] font-black uppercase tracking-wide text-zippy-navy/55">
+                  Level penjelajah (1 - {MAKS_LEVEL.toLocaleString("id-ID")})
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={MAKS_LEVEL}
+                  value={levelDari(nilaiPemain.xp)}
+                  onChange={(e) => {
+                    const l = Math.min(MAKS_LEVEL, Math.max(1, Math.floor(Number(e.target.value)) || 1));
+                    setNilaiPemain({ ...nilaiPemain, xp: String(xpLevel(l)) });
+                  }}
+                  className="mt-1 w-full rounded-xl border-2 border-zippy-navy/15 bg-white px-3 py-2 text-sm font-bold text-zippy-navy outline-none focus:border-zippy-teal"
+                />
+                <span className="mt-1 block text-[11px] font-bold leading-relaxed text-zippy-navy/55">
+                  Level dihitung dari XP (100 XP per level), jadi mengubah salah
+                  satunya otomatis menyesuaikan yang lain. Sekarang setara dengan{" "}
+                  <b>{Number(nilaiPemain.xp || 0).toLocaleString("id-ID")} XP</b>.
+                </span>
+              </label>
             </div>
 
             <p className="mt-3 rounded-xl bg-zippy-navy/5 px-3 py-2 text-[11px] font-bold leading-relaxed text-zippy-navy/65">
@@ -705,6 +889,93 @@ export default function AdminAkun() {
               </button>
               <button
                 onClick={() => setMengeditNilai(null)}
+                className="rounded-xl bg-zippy-navy/10 px-4 py-2.5 text-sm font-black text-zippy-navy transition active:scale-95"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Penyunting akun Pendamping: ganti surel dan/atau kata sandi.
+          Kata sandi TIDAK PERNAH diisi dari nilai mana pun - kolomnya selalu
+          dimulai kosong, sebab tidak ada yang bisa membaca sandi yang sudah
+          tersimpan, bukan panel ini, bukan server, bukan Supabase. Kosong
+          berarti "biarkan seperti semula". */}
+      {mengeditAkun && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-zippy-navy/55 p-4"
+          onClick={() => setMengeditAkun(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Edit akun ${mengeditAkun.email}`}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-3xl border-4 border-zippy-teal bg-cream p-5 shadow-pop-lg"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-display text-lg font-bold text-zippy-navy">Edit Akun Pendamping</p>
+                <p className="mt-1 truncate text-xs font-bold text-zippy-navy/60">
+                  {mengeditAkun.email}
+                </p>
+              </div>
+              <button
+                onClick={() => setMengeditAkun(null)}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-zippy-navy/10 text-zippy-navy transition active:scale-95"
+                aria-label="Tutup"
+              >
+                <X className="h-4 w-4" strokeWidth={3} />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <label className="block">
+                <span className="text-[11px] font-black uppercase tracking-wide text-zippy-navy/55">
+                  Alamat surel baru
+                </span>
+                <input
+                  type="email"
+                  value={nilaiAkun.email}
+                  onChange={(e) => setNilaiAkun({ ...nilaiAkun, email: e.target.value })}
+                  placeholder="nama@contoh.com"
+                  className="mt-1 w-full rounded-xl border-2 border-zippy-navy/15 bg-white px-3 py-2 text-sm font-bold text-zippy-navy outline-none focus:border-zippy-teal"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-[11px] font-black uppercase tracking-wide text-zippy-navy/55">
+                  Kata sandi baru (min. 8)
+                </span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={nilaiAkun.sandi}
+                  onChange={(e) => setNilaiAkun({ ...nilaiAkun, sandi: e.target.value })}
+                  placeholder="Kosongkan bila tidak diganti"
+                  className="mt-1 w-full rounded-xl border-2 border-zippy-navy/15 bg-white px-3 py-2 text-sm font-bold text-zippy-navy outline-none focus:border-zippy-teal"
+                />
+              </label>
+            </div>
+
+            <p className="mt-3 rounded-xl bg-zippy-navy/5 px-3 py-2 text-[11px] font-bold leading-relaxed text-zippy-navy/65">
+              Perubahan langsung berlaku. Keluarga yang sedang masuk tetap
+              bisa bermain sampai keluar sendiri, tetapi masuk berikutnya
+              harus memakai nilai baru di atas.
+            </p>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={simpanAkun}
+                disabled={sibuk}
+                className="flex-1 rounded-xl bg-zippy-teal px-4 py-2.5 text-sm font-black text-white transition active:scale-95 disabled:opacity-40"
+              >
+                Simpan
+              </button>
+              <button
+                onClick={() => setMengeditAkun(null)}
                 className="rounded-xl bg-zippy-navy/10 px-4 py-2.5 text-sm font-black text-zippy-navy transition active:scale-95"
               >
                 Batal

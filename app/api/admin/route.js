@@ -221,6 +221,10 @@ const AKSI_TULIS = new Set([
   "pendamping.daftar",
   "pendamping.buat",
   "pendamping.hapus",
+  // Ganti surel dan/atau kata sandi sebuah akun Pendamping.
+  "pendamping.ubah",
+  // Tautan masuk sekali pakai untuk akun Pendamping tertentu.
+  "pendamping.tautanMasuk",
   "anak.simpan",
   "anak.hapus",
   // Menyunting nilai pemain milik SEORANG anak (koin, XP, rentetan).
@@ -425,6 +429,134 @@ export async function POST(req) {
       // baris players yang tertaut hanya kehilangan tautannya (set null) -
       // riwayat kemajuan sengaja tidak dibuang diam-diam.
       return NextResponse.json({ ok: true });
+    }
+
+    // ---------------------------------------------------------
+    // Ubah surel dan/atau kata sandi sebuah akun Pendamping
+    // ---------------------------------------------------------
+    // Pemilik situs sering lupa kata sandi akun keluarganya sendiri, dan
+    // menyiapkan ulang lewat surel berarti menunggu kotak masuk. Dari sini
+    // pemilik bisa membetulkannya langsung.
+    //
+    // Yang dikirim hanya kolom yang benar-benar diubah: kolom yang tidak
+    // ikut dalam badan permintaan tidak disentuh sama sekali, sehingga
+    // mengganti kata sandi tidak diam-diam membatalkan surel, dan
+    // sebaliknya.
+    if (aksi === "pendamping.ubah") {
+      const id = String(body?.id || "");
+      if (!isUuid(id)) {
+        return NextResponse.json({ ok: false, galat: "Id pengguna tidak sah." }, { status: 422 });
+      }
+
+      /** @type {Record<string, unknown>} */
+      const ubahan = {};
+
+      if (body?.email !== undefined) {
+        const email = String(body.email).trim().toLowerCase();
+        if (!RE_EMAIL.test(email)) {
+          return NextResponse.json({ ok: false, galat: "Alamat surel tidak sah." }, { status: 422 });
+        }
+        // Mengganti surel AKUN SENDIRI dilarang. Surel itulah yang dipakai
+        // membuka panel; bila salah ketik, kunci panel ikut hilang dan tidak
+        // ada tombol lain yang bisa memulihkannya dari dalam panel.
+        if (id === admin.id) {
+          return NextResponse.json(
+            { ok: false, galat: "Alamat surel akun yang sedang membuka panel tidak bisa diganti dari sini." },
+            { status: 400 }
+          );
+        }
+        ubahan.email = email;
+        // Supabase menandai surel baru sebagai belum dikonfirmasi bila
+        // "Secure email change" aktif. Pengelola yang mengetiknya sendiri
+        // berarti sudah memastikan alamatnya, jadi dikonfirmasi langsung.
+        ubahan.email_change_confirm = true;
+      }
+
+      if (body?.sandi !== undefined) {
+        const sandi = String(body.sandi);
+        if (sandi.length < 8) {
+          return NextResponse.json(
+            { ok: false, galat: "Kata sandi minimal 8 karakter." },
+            { status: 422 }
+          );
+        }
+        ubahan.password = sandi;
+      }
+
+      if (Object.keys(ubahan).length === 0) {
+        return NextResponse.json(
+          { ok: false, galat: "Tidak ada yang diubah - isi surel atau kata sandi dulu." },
+          { status: 422 }
+        );
+      }
+
+      const { error } = await klien.auth.admin.updateUserById(id, ubahan);
+      if (error) {
+        return NextResponse.json({ ok: false, galat: terjemahAuth(error) }, { status: 400 });
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    // ---------------------------------------------------------
+    // Tautan masuk sekali pakai untuk sebuah akun Pendamping
+    // ---------------------------------------------------------
+    // Pemilik yang ingin melihat persis apa yang dilihat salah satu
+    // keluarganya tidak perlu menghafal kata sandi mereka. Supabase
+    // menyediakan tautan masuk; tautan itu TIDAK mengubah kata sandi
+    // apa pun, jadi keluarga tetap bisa masuk seperti biasa sesudahnya.
+    //
+    // Tautan mengalihkan peramban ke alamat situs dengan `#access_token`
+    // di belakangnya - format yang memang sudah ditangani sendiri oleh
+    // supabase-js ketika halaman dibuka, sehingga tidak perlu ada halaman
+    // perantara khusus.
+    if (aksi === "pendamping.tautanMasuk") {
+      const id = String(body?.id || "");
+      if (!isUuid(id)) {
+        return NextResponse.json({ ok: false, galat: "Id pengguna tidak sah." }, { status: 422 });
+      }
+      if (id === admin.id) {
+        return NextResponse.json(
+          { ok: false, galat: "Anda sedang masuk dengan akun ini." },
+          { status: 400 }
+        );
+      }
+
+      // `generateLink` meminta surel, bukan id - jadi id harus dipakai
+      // mencari dulu. Daftar akun dibatasi 200 per halaman dan jumlah akun
+      // di situs ini jauh di bawah itu, jadi satu halaman sudah cukup.
+      const { data: pengguna, error: galatDaftar } = await klien.auth.admin.listUsers({
+        page: 1,
+        perPage: 200,
+      });
+      if (galatDaftar) {
+        return NextResponse.json({ ok: false, galat: terjemahAuth(galatDaftar) }, { status: 400 });
+      }
+      const target = (pengguna?.users || []).find((u) => u.id === id);
+      if (!target?.email) {
+        return NextResponse.json(
+          { ok: false, galat: "Akun itu tidak ditemukan atau tidak mempunyai surel." },
+          { status: 404 }
+        );
+      }
+
+      // Tujuan tautan: alamat yang sedang dipakai membuka panel ini, supaya
+      // sesi yang terbuka mendarat di mesin yang sama. Supabase menolak
+      // bila alamat itu belum didaftarkan di Authentication -> URL
+      // Configuration, dan dalam keadaan itu TIDAK membuat kesalahan -
+      // ia diam-diam mengembalikan alamat situs bawaan. Karena itu alamat
+      // bawaan tetap disiapkan sebagai cadangan.
+      const asal = req.nextUrl.origin || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+      const { data, error } = await klien.auth.admin.generateLink({
+        type: "magiclink",
+        email: target.email,
+        options: { redirectTo: asal },
+      });
+      if (error) {
+        return NextResponse.json({ ok: false, galat: terjemahAuth(error) }, { status: 400 });
+      }
+
+      return NextResponse.json({ ok: true, tautan: data?.properties?.action_link || "" });
     }
 
     // ---------------------------------------------------------

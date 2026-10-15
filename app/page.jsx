@@ -30,7 +30,7 @@ import { unlockAudio, play } from "@/lib/sfx";
 import { touchStreak, persist } from "@/lib/store";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 import FeedbackForm from "@/components/FeedbackForm";
-import { daftarAnak, tambahAnak, pilihAnak, lepasProfil, mulaiTamu, MAKS_ANAK } from "@/lib/profil";
+import { daftarAnak, tambahAnak, pilihAnak, lepasProfil, mulaiTamu, pasangProfil, MAKS_ANAK } from "@/lib/profil";
 import { sampenAnak, sinkronMasuk } from "@/lib/syncAnak";
 import { moodKostum, ISLANDS } from "@/lib/gameData";
 
@@ -209,71 +209,140 @@ export default function LandingPage() {
   const PULAU = ISLANDS.filter((i) => !i.soon && !i.trial);
 
   useEffect(() => {
-    try {
+    /**
+     * Salin isi simpanan perangkat ke keadaan halaman.
+     *
+     * Dipanggil DUA KALI: sekali saat halaman dibuka, dan sekali lagi
+     * SETELAH sinkronisasi awan menjawab. Keduanya memakai fungsi yang sama
+     * supaya tidak mungkin ada dua versi yang berbeda cara membaca simpanan.
+     *
+     * Panggilan kedua inilah yang sering dilupakan. Jawaban awan datang
+     * BELAKANGAN - jauh setelah render pertama selesai - dan ia membawa
+     * dua hal yang paling sering dikeluhkan: daftar anak yang ditambah
+     * pengelola, dan nilai yang disunting pengelola. Tanpa bacaan ulang
+     * ini, keduanya memang SUDAH tersimpan di perangkat tetapi tidak
+     * pernah sampai ke layar. Pengelola menambahkan anak, orang tua
+     * membuka halaman awal, anaknya tidak muncul - padahal ada di awan.
+     */
+    function bacaSimpanan() {
       const raw = window.localStorage.getItem("zippyverse_save_v1");
-      if (raw) {
-        const s = JSON.parse(raw);
-        setNickname(s.nickname || "");
-        setEquipped(s.equipped || "default");
-        setAdaSimpanan(Boolean(s.nickname || s.playerId));
-        setPendamping(s.pendamping || null);
-        const daftar = daftarAnak(s);
-        setAnak(daftar);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      setNickname(s.nickname || "");
+      setEquipped(s.equipped || "default");
+      setAdaSimpanan(Boolean(s.nickname || s.playerId));
+      setPendamping(s.pendamping || null);
+      const daftar = daftarAnak(s);
+      setAnak(daftar);
 
-        // INVARIAN: nama pemain hanya boleh ada bila ada anak yang aktif.
-        //
-        // Perangkat menyimpan nama anak terakhir di `nickname`. Ketika akun
-        // itu berakhir tanpa anak sama sekali - akun pengelola yang tidak
-        // mempunyai profil anak, atau pemilik akun yang anaknya baru saja
-        // dihapus pengelola - nama lama itu tetap tertinggal dan ikut
-        // tampil di HUD seolah anaknya masih terdaftar.
-        //
-        // Dibersihkan di sini, bukan di `load()`, supaya perilaku simpanan
-        // yang diuji berkas tests/ tidak ikut berubah.
-        if (s.pendamping && !s.anakAktif && daftar.length === 0 && s.nickname) {
-          s.nickname = "";
-          try {
-            persist(s);
-          } catch {}
-          setAdaSimpanan(Boolean(s.playerId));
-        }
+      // INVARIAN: nama pemain hanya boleh ada bila ada anak yang aktif.
+      //
+      // Perangkat menyimpan nama anak terakhir di `nickname`. Ketika akun
+      // itu berakhir tanpa anak sama sekali - akun pengelola yang tidak
+      // mempunyai profil anak, atau pemilik akun yang anaknya baru saja
+      // dihapus pengelola - nama lama itu tetap tertinggal dan ikut
+      // tampil di HUD seolah anaknya masih terdaftar.
+      //
+      // Dibersihkan di sini, bukan di `load()`, supaya perilaku simpanan
+      // yang diuji berkas tests/ tidak ikut berubah.
+      if (s.pendamping && !s.anakAktif && daftar.length === 0 && s.nickname) {
+        s.nickname = "";
+        try {
+          persist(s);
+        } catch {}
+        setNickname("");
+        setAdaSimpanan(Boolean(s.playerId));
       }
+    }
+
+    try {
+      bacaSimpanan();
     } catch {}
     setReady(true);
 
-    // Menu "Admin Panel" muncul hanya bila sesi Supabase berperan pengelola.
-    // Peran dibaca dari `app_metadata.role` - bukan `user_metadata` - karena
-    // yang pertama ditulis oleh Supabase dari sisi server dan tidak bisa
-    // diubah lewat Alat Pengembang.
+    // Tarik daftar anak dari awan SETELAH profil akun menempel.
     //
-    // Ini murni kebijakan TAMPILAN. Pengaman sesungguhnya tetap di server:
-    // /api/admin menolak token tanpa peran pengelola, jadi walau ada yang
-    // mengetik /admin langsung, ia tetap berhenti di gerbangnya.
-    if (supabaseEnabled) {
-      supabase.auth
-        .getSession()
-        .then(({ data }) => {
-          const peran = data?.session?.user?.app_metadata?.role;
-          setBolehAdmin(peran === "admin");
+    // Urutannya penting dan sengaja tidak dibalik: `pasangProfil` yang
+    // menentukan anak mana yang boleh menempel pada perangkat ini, dan
+    // menarik daftar sebelum profil menempel berarti menarik untuk akun
+    // yang salah - persis kebocoran antar akun yang sudah diperbaiki sekali
+    // dan tidak boleh terulang.
+    function tarikDariAwan() {
+      let menempel = false;
+      try {
+        const awal = JSON.parse(window.localStorage.getItem("zippyverse_save_v1") || "{}");
+        menempel = Boolean(awal?.pendamping?.id);
+      } catch {}
+
+      // Tanpa langkah ini, anak yang ditambah atau dihapus pengelola lewat
+      // panel admin tidak akan pernah sampai ke halaman ini - sebab setelah
+      // sesi tersimpan, keluarga tidak lagi membuka /daftar sama sekali.
+      if (!menempel) return;
+
+      sinkronMasuk()
+        // Baca ulang simpanan BEGITU awan menjawab. Sengaja bukan `await`
+        // di awal: sinkronisasi tidak boleh menahan render, sebab perangkat
+        // harus tetap bisa dipakai walau jaringan bermasalah. Yang ditahan
+        // hanya pembaruan tampilan, dan itu tiba dalam hitungan milidetik.
+        //
+        // Tanpa bacaan ulang ini, daftar anak dan nilai yang disunting
+        // pengelola memang SUDAH tersimpan di perangkat tetapi tidak pernah
+        // sampai ke layar - pengelola menambahkan anak, orang tua membuka
+        // halaman awal, anaknya tidak muncul padahal ada di awan. Kegagalannya
+        // diabaikan, dan sinkronisasi tidak pernah menghapus anak apa pun
+        // bila jawaban dari awan kosong.
+        .then(() => {
+          try {
+            bacaSimpanan();
+          } catch {}
         })
         .catch(() => {});
     }
 
-    // Bila perangkat ini sudah menempel pada sebuah akun Pendamping, ambil
-    // kabar terbaru daftar anaknya dari awan. Tanpa langkah ini, anak yang
-    // ditambah atau dihapus pengelola lewat panel admin tidak akan pernah
-    // sampai ke halaman ini - sebab setelah sesi tersimpan, keluarga tidak
-    // lagi membuka /daftar sama sekali.
-    //
-    // Sengaja tidak ditunggu dan kegagalannya diabaikan: perangkat tetap
-    // bisa dipakai walau jaringan bermasalah, dan sinkronisasi tidak pernah
-    // menghapus anak apa pun bila jawaban dari awan kosong.
-    try {
-      const awal = JSON.parse(window.localStorage.getItem("zippyverse_save_v1") || "{}");
-      if (awal?.pendamping?.id) {
-        sinkronMasuk().catch(() => {});
-      }
-    } catch {}
+    if (!supabaseEnabled) {
+      tarikDariAwan();
+      return undefined;
+    }
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        const u = data?.session?.user;
+
+        // Menu "Admin Panel" muncul hanya bila sesi berperan pengelola.
+        // Peran dibaca dari `app_metadata.role` - bukan `user_metadata` -
+        // karena yang pertama ditulis Supabase dari sisi server dan tidak
+        // bisa diubah lewat Alat Pengembang.
+        //
+        // Ini murni kebijakan TAMPILAN. Pengaman sesungguhnya tetap di
+        // server: /api/admin menolak token tanpa peran pengelola, jadi walau
+        // ada yang mengetik /admin langsung, ia tetap berhenti di gerbangnya.
+        setBolehAdmin(u?.app_metadata?.role === "admin");
+
+        if (!u?.email) return;
+
+        // PERANGKAT BARU, ATAU SIMPANAN YANG HILANG.
+        //
+        // Sesi Supabase bertahan jauh lebih lama daripada localStorage -
+        // misal setelah peramban dibersihkan, atau di perangkat kedua
+        // keluarga yang baru dipinjamkan. Bila halaman awal langsung dibuka
+        // (bukan lewat /daftar), tidak ada satu pun yang pernah memasang
+        // profil akun itu: layar menganggap pengunjung tamu, dan daftar anak
+        // dari awan tidak pernah ditarik sama sekali. Inilah yang membuat
+        // pengelola melihat anaknya ada di panel, sementara halaman awal
+        // keluarga menganggap akun itu belum mempunyai anak apa pun.
+        //
+        // Dipasang hanya bila simpanan belum menempel pada akun mana pun.
+        // `pasangProfil` sendiri idempoten - memanggilnya ketika akun sudah
+        // menempel tidak mengubah apa pun - tetapi dilewati di sini supaya
+        // tidak menulis simpanan tanpa perlu pada setiap kunjungan.
+        try {
+          const awal = JSON.parse(window.localStorage.getItem("zippyverse_save_v1") || "{}");
+          if (!awal?.pendamping?.id) pasangProfil(u);
+        } catch {}
+      })
+      .finally(() => tarikDariAwan())
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
