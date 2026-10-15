@@ -144,7 +144,20 @@ export default function IslandPage() {
     setPhase("main");
   }
 
-  if (!island || !save) {
+  // Dua keadaan yang dulu dirangkap satu `if` tetapi artinya berbeda:
+  //
+  //   `!save`   -> `save` masih `null` karena `useEffect` di atas belum
+  //                sempat berjalan. Ini memuat yang sesungguhnya, sebentar
+  //                lalu hilang sendiri.
+  //   `!island` -> `island` dihitung dari `ISLANDS` yang statis, jadi `null`
+  //                berarti slug itu memang tidak pernah ada. Tidak akan
+  //                berubah walau ditunggu berjam-jam.
+  //
+  // Dulu keduanya dipakai bersama, sehingga salah mengetik alamat pulau
+  // menampilkan "Memuat pulau..." selamanya - tanpa satu pun tombol untuk
+  // keluar. Kini keduanya dipisah supaya slug yang tak dikenal bisa
+  // menawarkan jalan pulang.
+  if (!save) {
     return (
       <main className="space-bg relative grid min-h-screen place-items-center overflow-hidden">
         <SpaceBackdrop />
@@ -152,6 +165,43 @@ export default function IslandPage() {
           text="Memuat pulau..."
           sub="Zippy sedang menyiapkan misi untukmu."
         />
+      </main>
+    );
+  }
+
+  if (!island) {
+    return (
+      <main className="space-bg relative grid min-h-screen place-items-center overflow-hidden">
+        <SpaceBackdrop />
+        <div className="relative z-10 flex flex-col items-center gap-4 px-5 text-center">
+          <Zippy
+            size={130}
+            mood="terkejut"
+            speech="Pulau ini tidak ada, Sahabat!"
+          />
+          <h1 className="font-display text-3xl font-bold text-white">
+            Pulau Tidak Ditemukan
+          </h1>
+          <p className="max-w-sm text-sm font-semibold text-white/70">
+            Alamat <span className="text-zippy-yellow">{slug}</span> tidak ada
+            di Planet Luminara. Mungkin Zippy salah menulisnya? Yuk kembali ke
+            peta dan pilih pulau yang lain.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <button
+              onClick={() => router.push("/peta")}
+              className="btn-pop rounded-2xl bg-zippy-yellow px-6 py-3 font-black text-zippy-navy"
+            >
+              Kembali ke Peta
+            </button>
+            <button
+              onClick={() => router.push(`/pulau/${TRIAL_SLUG}`)}
+              className="rounded-2xl border-4 border-white/30 px-6 py-2.5 font-black text-white transition hover:bg-white/10"
+            >
+              Main Pulau Perkenalan
+            </button>
+          </div>
+        </div>
       </main>
     );
   }
