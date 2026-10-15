@@ -2,6 +2,14 @@ import Link from "next/link";
 import SpaceBackdrop from "@/components/SpaceBackdrop";
 import Zippy from "@/components/Zippy";
 
+// Judul khusus halaman 404. Tanpa ini, halaman memakai judul bawaan layout
+// root sehingga tab yang salah alamat terlihat sama persis dengan tab
+// beranda - persis kesalahan yang sama seperti BUG-05.
+export const metadata = {
+  title: "Halaman Tidak Ditemukan",
+  robots: { index: false, follow: true },
+};
+
 /**
  * Halaman "tidak ditemukan".
  *
