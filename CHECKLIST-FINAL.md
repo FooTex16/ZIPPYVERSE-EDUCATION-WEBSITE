@@ -72,7 +72,9 @@ dikerjakan".
 
 - Struktur 5 bagian sesuai ketentuan: Ringkasan Project · Stack & Tools ·
   Fitur & Halaman · Aturan Kerja · Catatan Pengembangan.
-- Berisi 4 tanda `[TINJAU]` yang masih menunggu keputusan Anda.
+- Berisi 6 tanda `[TINJAU]` (4 di blok kutip, 2 di paragraf) — **semuanya sudah
+  diselesaikan 15 Okt 2026** dengan bukti pengambilan langsung, sehingga berkas
+  kini **tanpa `[TINJAU]`**.
 - `PRD.md` **tidak ada** — namun ketentuan memakai "AGENTS.md / PRD", jadi
   kebutuhan terpenuhi lewat `AGENTS.md`.
 
@@ -87,15 +89,15 @@ dikerjakan".
 | Slot | Kategori | Prompt asli dari log |
 | --- | --- | --- |
 | 1 | Ide / PRD | #8 (11 Okt 13:48) + #9 pemilih ide |
-| 2 | Debugging | #73 (15 Okt 12:45) |
+| 2 | Debugging | #70 (15 Okt 12:45) |
 | 3 | Audit & Optimasi | #34 (13 Okt 13:10) |
 | 4 | Finishing | #15 (11 Okt 20:06) |
-| 5 | Bebas — deploy | #77 (15 Okt 16:08) |
+| 5 | Bebas — deploy | #74 (15 Okt 16:08) |
 
 Pencarian `[ISI DARI LOG ASLI ANDA]` di seluruh repo: **tidak ada satu pun di
 `JURNAL-PROMPT.md`.** Lima kecocokan yang ada semuanya berada di dalam
 `LOG-PROMPT-MENTAH.md` sebagai **kutipan verbatim dari prompt Anda sendiri**
-(#80) yang memang memuat instruksi tersebut.
+(#77) yang memang memuat instruksi tersebut.
 
 ---
 
@@ -120,10 +122,10 @@ penandanya ditulis terang-terangan di kepala berkas:
 
 | Prompt | Rahasia | Penanda |
 | --- | --- | --- |
-| #11, #80 | `GEMINI_API_KEY` | `[RAHASIA DIREDAM: nilai GEMINI_API_KEY]` |
-| #49 | `SUPABASE_SERVICE_ROLE_KEY` (peran `service_role`) | `[RAHASIA DIREDAM: kunci Supabase berperan service_role]` |
+| #11, #77 | `GEMINI_API_KEY` | `[RAHASIA DIREDAM: nilai GEMINI_API_KEY]` |
+| #46 | `SUPABASE_SERVICE_ROLE_KEY` (peran `service_role`) | `[RAHASIA DIREDAM: kunci Supabase berperan service_role]` |
 | #11 | Kata sandi koneksi database postgres | `[RAHASIA DIREDAM: kata sandi database]` |
-| #11, #50 | Kata sandi akun (sama dengan sandi database) | `[RAHASIA DIREDAM: kata sandi akun]` |
+| #11, #47 | Kata sandi akun (sama dengan sandi database) | `[RAHASIA DIREDAM: kata sandi akun]` |
 
 Sisanya — termasuk ejaan yang salah, prompt yang diulang, dan tanda baca
 berantakan — **disalin kata demi kata**. Keempat nilai aslinya tetap utuh di
@@ -203,12 +205,12 @@ penting: seret–lepas di pulau, memutar suara soal, dan buka `/peta` + `/admin`
 
 | Prioritas | Tugas | Poin |
 | --- | --- | --- |
-| **1** | Tambah link demo di README + ubah `106 pengujian` → `184` | 6 |
+| **1** | Tambah link demo di README + ubah `106 pengujian` → `184` | **SELESAI** — tautan Live & Kode di kepala README; dua baris `106 pengujian` menjadi `184` |
 | **2** | Tes nyata di HP + emulasi 320/375/768 px | 8 |
 | **3** | Isi `GEMINI_API_KEY` di Vercel → Redeploy, lalu pastikan `mode` berubah `fallback` → `gemini` | 2 (catatan) |
 | **4** | Putar ulang **4 rahasia** yang sudah terekspos (lihat poin 5) | — |
 | **5** | Hubungkan integrasi Git di Vercel — saat ini push **tidak** memicu deploy | — |
-| **6** | Selesaikan 4 tanda `[TINJAU]` di `AGENTS.md` | — |
+| **6** | Selesaikan 6 tanda `[TINJAU]` di `AGENTS.md` | **SELESAI** — dilepas semua 15 Okt 2026; berkas kini tanpa `[TINJAU]` |
 | **7** | Buat `ANALISIS-KESESUAIAN.md` — diminta pada 15 Okt tetapi belum pernah ada | — |
 
 ---

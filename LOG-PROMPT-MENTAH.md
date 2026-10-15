@@ -33,10 +33,17 @@ Sesi yang dimasukkan:
 | `ses_ecc1b570affe` | Code quality and content audit | 1 |
 | **Jumlah** | | **77** |
 
-> Prompt #35–#37 (sesi audit) secara harfiah disimpan sebagai tipe `user` di
-> database, tetapi **ditulis oleh AI** sebagai pesan pemicu subagen — bukan oleh
-> manusia. Agar angka prompt pengguna tetap jujur, ketiganya diletakkan di
-> **Lampiran B** dan diberi nomor lanjutan, bukan dihitung dalam 77.
+> **Baris ke-35–37 dalam urutan database** (sesi audit) secara harfiah
+> disimpan sebagai tipe `user`, tetapi **ditulis oleh AI** sebagai pesan pemicu
+> subagen — bukan oleh manusia. Karena penghitungan 77 di atas mengurutkan
+> **pesan manusia saja**, ketiganya diletakkan di **Lampiran B** dan diberi
+> nomor lanjutan **#78, #79, #80**.
+>
+> **Akibatnya nomor berkas ini bukan indeks database.** Untuk pesan setelah
+> 13 Okt 13:10 WIB, nomor di sini lebih kecil 3 daripada urutan baris mentah.
+> Contoh: `GEMINI_API_KEY` ada di **Prompt #77** (15 Okt 17:39) yang merupakan
+> baris ke-80 dalam ekstraksi mentah. **Rujuklah selalu nomor pada judul
+> `## Prompt #N` di berkas ini.**
 
 ### Catatan keamanan — baca sebelum mempublikasikan
 
@@ -44,12 +51,15 @@ Empat jenis rahasia ditemukan di dalam pesan pengguna dan **sudah diganti**
 dengan penanda redaksi. Tidak ada satu pun nilai aslinya yang tertulis di
 berkas ini:
 
+Nomor di kolom pertama mengacu ke judul `## Prompt #N` di berkas ini:
+**#1–#77 untuk pesan manusia, #78–#80 untuk Lampiran B.**
+
 | Prompt | Rahasia | Penanda yang dipakai |
 | --- | --- | --- |
-| #11, #80 | `GEMINI_API_KEY` | `[RAHASIA DIREDAM: nilai GEMINI_API_KEY]` |
-| #49 | `SUPABASE_SERVICE_ROLE_KEY` (peran `service_role`) | `[RAHASIA DIREDAM: kunci Supabase berperan service_role]` |
+| #11, #77 | `GEMINI_API_KEY` | `[RAHASIA DIREDAM: nilai GEMINI_API_KEY]` |
+| #46 | `SUPABASE_SERVICE_ROLE_KEY` (peran `service_role`) | `[RAHASIA DIREDAM: kunci Supabase berperan service_role]` |
 | #11 | Kata sandi koneksi database postgres | `[RAHASIA DIREDAM: kata sandi database]` |
-| #11, #50 | Kata sandi akun (sama dengan sandi database) | `[RAHASIA DIREDAM: kata sandi akun]` |
+| #11, #47 | Kata sandi akun (sama dengan sandi database) | `[RAHASIA DIREDAM: kata sandi akun]` |
 
 Redaksi dilakukan karena repo ini wajib **publik** — menyalin rahasia apa
 adanya ke repositori publik berarti membocorkannya. Nilai asli tetap utuh di

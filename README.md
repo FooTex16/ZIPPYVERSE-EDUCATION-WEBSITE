@@ -2,6 +2,9 @@
 
 Game edukasi web untuk anak sekolah dasar, dibintangi maskot **Zippy**.
 
+> 🌐 **Live:** <https://zippyverse.vercel.app/>
+> 📦 **Kode:** <https://github.com/FooTex16/ZIPPYVERSE-EDUCATION-WEBSITE>
+
 ---
 
 ## Tujuan
@@ -106,7 +109,7 @@ zippyverse/
 │   ├── sfx.js                    Efek suara permainan
 │   └── zippyBrain.js             Jawaban cadangan saat AI tidak tersedia
 ├── scripts/                      Skrip bantu (audio, optimasi aset, audit)
-└── tests/                        106 pengujian otomatis
+└── tests/                        184 pengujian otomatis
 ```
 
 ---
@@ -218,7 +221,7 @@ terjadi, bukan dari teori.
 9. **Tiga perintah ini harus lulus**, tanpa kecuali:
 
    ```bash
-   npm test        # 106 pengujian
+   npm test        # 184 pengujian (33 rangkaian)
    npm run lint
    npm run build
    ```

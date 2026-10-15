@@ -59,8 +59,11 @@ yang memperbaikinya sendiri — kini disertai catatan:
 > *Angka di atas adalah cuplikan per 15 Okt 2026 … Jalankan
 > `git rev-list --count HEAD` … untuk angka terkini.*
 
-**Belum beres:** 4 tanda `[TINJAU]` di `AGENTS.md` masih menunggu keputusan
-Anda — terutama soal tema *"edukasi coding"* yang belum terwujud di kode.
+**Sudah beres:** 6 tanda `[TINJAU]` di `AGENTS.md` (4 di blok kutip, 2 di
+paragraf) **sudah diselesaikan semua** pada 15 Okt 2026. Temuan terpenting justru
+membantah premis draf awal: tema bukan *"edukasi coding"* — subtema resmi ialah
+*"Web Education for Kids (untuk anak SD)"* (Prompt #61), sehingga isi kode yang
+berupa pelajaran umum SD **sudah sesuai**.
 
 ---
 
@@ -70,12 +73,12 @@ Anda — terutama soal tema *"edukasi coding"* yang belum terwujud di kode.
 | --- | --- |
 | `[ISI DARI LOG ASLI ANDA]` di `JURNAL-PROMPT.md` | **0** |
 | Jumlah slot | **5** (`### Slot 1` … `### Slot 5`) |
-| Slot tanpa prompt asli | **0** — semuanya menunjuk Prompt #8, #73, #34, #15, #77 |
+| Slot tanpa prompt asli | **0** - semuanya menunjuk Prompt #8, #70, #34, #15, #74 |
 
 Pencarian teks placeholder terhadap seluruh repo menghasilkan **5 kecocokan**,
 dan **kelima-limanya berada di dalam `LOG-PROMPT-MENTAH.md`** pada baris
 1799–1849. Itu **bukan placeholder yang terlupa** — melainkan **kutipan verbatim
-dari Prompt #80**, yaitu instruksi Anda sendiri yang memang memuat kalimat
+dari Prompt #77**, yaitu instruksi Anda sendiri yang memang memuat kalimat
 `[ISI DARI LOG ASLI ANDA]`, `[TIDAK ADA DATA]`, dan `[TEMPELKAN LOG ASLI ANDA
 DI SINI]`. Log mentah wajib menyalinnya apa adanya.
 
@@ -165,8 +168,8 @@ menghasilkan **0 kecocokan**.
 | **3** | Isi `GEMINI_API_KEY` di Vercel → **Redeploy** | `POST /api/zippy` masih `mode: "fallback"`; AI sungguhan belum jalan |
 | **4** | **Putar ulang 4 rahasia** (Gemini, service role, sandi database, sandi akun) | Keempatnya pernah terekspos di percakapan dan kini tersimpan sebagai penanda di log publik |
 | **5** | Sambungkan integrasi Git di Vercel | Saat ini push ke GitHub **tidak** memicu deploy |
-| **6** | Selesaikan 4 tanda `[TINJAU]` di `AGENTS.md` | Salah satunya menyangkut tema lomba vs isi kode |
-| **7** | Buat `ANALISIS-KESESUAIAN.md` | Diminta pada 15 Okt (Prompt #64) tetapi berkasnya **belum pernah dibuat** |
+| **6** | Selesaikan 6 tanda `[TINJAU]` di `AGENTS.md` | **SUDAH** — semuanya dilepas 15 Okt 2026; tema ternyata subtema "Web Education for Kids", bukan "edukasi coding" |
+| **7** | Buat `ANALISIS-KESESUAIAN.md` | Diminta pada 15 Okt (Prompt #61) tetapi berkasnya **belum pernah dibuat** |
 | **8** | Commit & push `CHECKLIST-FINAL.md` dan `CEK-3-KOMPONEN.md` | Keduanya baru dibuat, belum ikut ter-commit |
 
 ### Yang sudah saya kerjakan pada pemeriksaan ini

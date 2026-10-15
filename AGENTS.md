@@ -11,8 +11,12 @@ repositori ini.
 >   berikutnya tidak mengulang kesalahan lama.
 >
 > **Tanda `[TINJAU]`** menandai klaim yang belum bisa dipastikan dari isi
-> repositori dan menunggu konfirmasi pemilik proyek. Jangan menganggapnya final
-> sebelum tanda itu dilepas.
+> repositori. **Enam penanda yang semula ada — 4 di blok kutip dan 2 di paragraf
+> — sudah diselesaikan semua pada 15 Okt 2026**, dengan bukti pengambilan
+> langsung: subtema resmi dari Prompt #61, metadata sesi OpenCode, penghitungan
+> tabel Supabase memakai `service_role`, dan pemindaian seluruh ruang kerja.
+> Berkas ini kini **tanpa `[TINJAU]`**. Bila ada penanda baru ditambahkan kelak,
+> aturannya tidak berubah: jangan dianggap final sebelum tanda itu dilepas.
 >
 > **Cara memverifikasi ulang:** setiap angka di bawah berasal dari perintah
 > yang bisa dijalankan ulang — `npm test`, `git log`, penghitungan berkas, atau
@@ -25,14 +29,27 @@ repositori ini.
 **ZippyVerse adalah game edukasi web untuk anak sekolah dasar**, dibintangi
 maskot Zippy di Planet Luminara.
 
-> [TINJAU] **Soal tema.** Instrumen proyek menyebut tujuannya sebagai
-> *"website edukasi coding anak SD"*. Namun isi konten yang benar-benar ada di
-> kode mencakup pelajaran umum: **angka, kata, sains, kreatif, bumi**. Satu-satunya
-> pulau bertema teknologi adalah **Pulau Digital**, dan statusnya
-> `available: false` / `soon: true` — belum punya satu misi pun. Jadi
-> "edukasi coding" saat ini **belum terwujud di dalam kode**. Putuskan apakah
-> naskah dokumen lomba akan menyesuaikan isi, atau Pulau Digital perlu diisi
-> lebih dulu.
+> **Soal tema — sudah diperiksa 15 Okt 2026, bukan lagi tanda `[TINJAU]`.**
+> Tautan aslinya bukan "edukasi coding". Prompt pembuka proyek (5 Okt 00:29
+> WIB) menulis subtema **"WEB EDUCATION FOR KIDS (untuk anak SD)"**, dan
+> ketentuan lomba yang diterima 15 Okt 2026 (Prompt #61) menyebut gerbang
+> kelima: *"Website sesuai tema 'Innovating Education Through Technology'
+> subtema 'Web Education for Kids (untuk anak SD)'"*. Frasa **"website
+> edukasi coding"** sebagai tujuan proyek hanya muncul di dalam kerangka
+> instruksi penulisan `AGENTS.md` sendiri (Prompt #67 dan #76, 15 Okt 2026)
+> — tidak ada di ketentuan lomba.
+>
+> Karena itu isi kode **sudah sesuai subtema**: pelajaran umum SD — angka,
+> kata, sains, kreatif, bumi. Pemindaian pola `coding`, `pemrograman`,
+> `koding`, `algoritma`, `program` pada seluruh `lib/*.js` hanya menemukan
+> dua kebetulan di komentar (`img.decoding = "async"` pada `preload.js` dan
+> "algoritma mulberry32" pada `shuffle.js`) — **nol soal bertema
+> pemrograman**, dan memang tidak diwajibkan ketentuan mana pun.
+>
+> **Satu catatan pengembangan, bukan syarat penilaian:** `Pulau Digital`
+> (`available: false`, `soon: true`, tagline "Segera Hadir!", tanpa satu pun
+> misi) adalah peta jalan. Mengisinya tidak menambah nilai kelayakan;
+> tidak mengisinya tidak mengurangi.
 
 ### Masalah yang dijawab
 
@@ -134,8 +151,20 @@ sinkronisasi awan mengembalikan daftar kosong, data perangkat tidak ditimpa.
 `"gemini"` atau `"fallback"`. Bila `mode` selalu `fallback`, periksa
 `GEMINI_API_KEY` lebih dulu sebelum mencurigai kode.
 
-> **AI pembangun:** [TINJAU] OpenCode · MiMo — sesuaikan bila pemilik proyek
-> memakai nama paket yang lain.
+> **AI pembangun — sudah diperiksa dari metadata sesi OpenCode, bukan lagi
+> `[TINJAU]`.** Semua pesan tercatat memakai penyedia **`opencode`**, tetapi
+> **tiga model berbeda**, jadi menyebut "OpenCode · MiMo" betul tetapi tidak
+> lengkap:
+>
+> | Model | Jumlah baris pesan |
+> | --- | --- |
+> | `mimo-v2.6-flash-free` | 62 |
+> | `space-bunny-free` | 7 |
+> | `claude-opus-5.5` | 3 — termasuk Prompt #8 (minta ide) dan #9 (memilih ZippyVerse) |
+> | tanpa keterangan model | 8 — 5 prompt pembuka 5 Okt dan 3 pesan pemicu subagen 13 Okt |
+>
+> Nama yang tepat untuk ditulis: **OpenCode** (penyedia) · **MiMo**
+> (`mimo-v2.6-flash-free`, model utama).
 
 ### Hosting
 
@@ -200,10 +229,24 @@ Enam rute halaman punya `layout.jsx` sendiri untuk metadata per halaman
 **Total 9 pulau**, ditambah `DAILY_SLUG` (`harian`) untuk Tantangan Harian.
 
 > **Cara membaca kolom `available`.** Nilai di atas berasal dari **cadangan
-> statis** di dalam kode. Konten yang benar-benar tayang disimpan di tabel
-> Supabase `planets`/`missions` dan dapat disunting dari `/admin`, sehingga
-> jumlah pulau terbuka di situs sungguhan bisa melebihi angka statis.
-> [TINJAU — petakan tabel Supabase dan bandingkan dengan cadangan statis.]
+> statis** di dalam kode. Konten yang bisa disunting lewat `/admin` disimpan
+> di tabel Supabase `planets`/`missions`, sehingga jumlah pulau terbuka
+> *bisa* melebihi angka statis.
+>
+> **Sudah dipetakkan 15 Okt 2026 — ternyata tidak ada yang melebihi.**
+> Dikueri langsung ke proyek Supabase dengan dua peran (anon dan
+> `service_role`), memakai `Prefer: count=exact`:
+>
+> | Tabel | Total baris | Kode `HTTP` |
+> | --- | --- | --- |
+> | `planets` | **0** | 200 |
+> | `missions` | **0** | 200 |
+> | `profiles` | **0** | 200 |
+>
+> Angkanya sama untuk kedua peran, jadi ini **bukan RLS yang menyaring** —
+> tabelnya memang kosong. Konsekuensinya: **cadangan statis di dalam kode
+> adalah satu-satunya sumber isi yang tayang**, dan `/admin` belum pernah
+> menerbitkan konten apa pun.
 
 ### Konten misi — angka yang terverifikasi dari kode
 
@@ -218,10 +261,16 @@ Enam rute halaman punya `layout.jsx` sendiri untuk metadata per halaman
 Cara menghitung ulang: jumlah objek soal dalam tiap larik `const XX = [...]`
 pada ketiga berkas di atas.
 
-> [TINJAU] **Angka 34 misi / 258 butir** yang sempat tercantum di dokumentasi
-> lama **tidak terbukti dari isi repositori**. Angka itu kemungkinan berasal
-> dari konten yang sudah diterbitkan di Supabase. Bila benar, catat sumbernya
-> secara terpisah supaya tidak tercampur dengan angka statis.
+> **Sudah dicek 15 Okt 2026 — bukan lagi `[TINJAU]`. Angka "34 misi / 258
+> butir" tidak punya sumber sama sekali.** Dugaan bahwa angka itu berasal
+> dari konten terbitan Supabase **kini terbantahkan**: tabel `planets` dan
+> `missions` berisi **0 baris**, diperiksa pula dengan `service_role`
+> sehingga bukan filter keamanan yang menyembunyikannya. Tidak ada isi di
+> luar yang bisa menghasilkan 34/258.
+>
+> Angka yang sah adalah tabel di atas: **19 misi / 143 butir** dari kode.
+> Bila ada dokumen lain yang menyebut 34/258, angkanya **salah dan wajib
+> dikoreksi** — bukan dicatat sebagai angka alternatif.
 
 ### Tipe misi — 6
 
@@ -406,13 +455,33 @@ tidak mengulang kesalahan yang sama.
 
 Dua lapis perlu dibedakan jangan sampai tertukar.
 
-**AI sebagai pembangun** [TINJAU — konfirmasi urutan percakapan awal dari log
-prompt asli; bagian ini disusun dari keadaan repositori, bukan dari log.]:
+**AI sebagai pembangun — sudah dicocokkan dengan log prompt asli (77 prompt
+pengguna, 5–15 Okt 2026), bukan lagi `[TINJAU]`:**
 
-- **Ide berasal dari AI, lalu langsung dibangun** — tanpa dokumen PRD
-  terpisah lebih dulu. Buktinya: `PRD.md`, `docs/`, `PLAN.md`, dan `CLAUDE.md`
-  tidak pernah dibuat; satu-satunya dokumen adalah `README.md` yang lahir
-  bersamaan dengan impor kode.
+| Waktu (WIB) | Prompt | Yang tercatat |
+| --- | --- | --- |
+| 5 Okt 00:29–00:32 | #1–#5 | Tema dan subtema *"WEB EDUCATION FOR KIDS (untuk anak SD)"* ditetapkan |
+| 6 Okt 14:24 | #6 | **PRD diminta**: *"coba kamu buatkan prd dari website ini dalam format .md"* |
+| 7 Okt 21:44 | #7 | `design.zip` diminta diperiksa kesesuaiannya |
+| 11 Okt 13:48 | #8 | Mintai AI ide website lomba *vibe coding* bermaskot Zippy |
+| 11 Okt 13:55 | #9 | **Ide 1 ZIPPYVERSE dipilih** — pembangunan mulai |
+| 11–13 Okt | #10–#39 | Aset, rute, pengujian di localhost, perbaikan bug |
+| 14 Okt 13:05:52 | — | Repositori diinisialisasi; empat komit berikutnya mendarat dalam **5 detik** |
+
+- **Koreksi atas draf sebelumnya.** Baris ini semula berbunyi *"tanpa dokumen
+  PRD terpisah lebih dulu"* dengan bukti *"`PRD.md` tidak pernah dibuat"*.
+  Log asli membuktikan sebaliknya: **PRD memang diminta** pada 6 Okt 2026
+  (Prompt #6) — tetapi permintaan itu ditujukan kepada *website* yang sedang
+  dibahas masa itu, **empat hari sebelum ZippyVerse bernama** (nama lahir pada
+  Prompt #9, 11 Okt). Untuk ZippyVerse sendiri memang tidak ada berkas PRD di
+  antara pemilihan ide dan pembangunan.
+- **Bukti berkas, diperiksa ulang 15 Okt 2026:** di seluruh ruang kerja tidak
+  ada `PRD.md`, `PLAN.md`, `CLAUDE.md`, maupun folder `docs/`. Satu-satunya
+  berkas sejenis adalah `REKONSTRUKSI-SLOT1-IDE-PRD.md` (13,8 KB, dibuat
+  15 Okt 11:04) — yaitu **rekonstruksi belakangan, bukan PRD asli**. Satu-satunya
+  dokumen yang ikut impor kode adalah `README.md`.
+- Apakah PRD hasil Prompt #6 pernah ditulis lalu dihapus **tidak bisa
+  dipastikan**: log ini hanya memuat pesan pengguna, bukan jawaban AI.
 - Seluruh kerangka masuk git **serentak**: repositori diinisialisasi 14 Okt
   2026 pukul 13:05:52, lalu empat komit lagi mendarat pada 13:05:55, 13:05:56,
   13:05:56, dan 13:05:57 — konfigurasi, aset, logika, antarmuka, lalu README,
@@ -468,10 +537,23 @@ Kesalahan berulang yang layak diingat:
 
 ### 5.4 · Audit & optimasi
 
-- **Laporan audit** disimpan sebagai `AUDIT_REPORT.md` dengan temuan bernomor
-  `F-01` … `F-27` yang dipakai sebagai penanda lintas dokumen.
-  [TINJAU — berkas ini berada di **luar** repositori. Putuskan apakah perlu
-  ikut dikomit sebagai bukti proses, atau disaring dulu.]
+- **Laporan audit** disimpan sebagai `AUDIT_REPORT.md` (79.228 byte, 1.352
+  baris) dengan temuan bernomor `F-01` … `F-27` yang dipakai sebagai penanda
+  lintas dokumen.
+  **Keputusan 15 Okt 2026: berkas ini sengaja TIDAK ikut dikomit.** Alasan
+  diverifikasi, bukan sekadar kebiasaan:
+  - Isinya **bersih dari nilai rahasia** — dipindai untuk pola kunci Gemini,
+    token JWT Supabase, `service_role`, dan sandi; **tidak ada satu pun
+    kecocokan**.
+  - Namun ia memuat **F-04 (prioritas P1) yang masih terbuka** — anon key
+    Supabase dikombinasikan dengan `playerId` yang dikendalikan klien, berisiko
+    IDOR antar profil anak, statusnya *"Menunggu pemilik proyek"*. Menerbitkan
+    uraian kerentanan yang belum diperbaiki ke repositori publik berarti
+    membagikan peta serangannya.
+  - `VERIFIKASI-DEPLOY.md` juga berada di luar repositori; keduanya dokumen
+    proses, bukan konsumsi agen yang mengubah kode.
+  **Bila F-04 sudah diperbaiki**, berkas ini boleh ikut dikomit utuh tanpa
+  perlu disaring.
 - **Verifikasi deployment** tercatat di `VERIFIKASI-DEPLOY.md` (di luar
   repositori) berisi pemeriksaan langsung ke situs live: rute, aset, routing,
   formulir, HTTPS, dan Lighthouse.
@@ -504,5 +586,6 @@ Kesalahan berulang yang layak diingat:
 *Dokumen ini disusun 15 Okt 2026 dari pembacaan langsung `package.json`,
 struktur `app/` · `components/` · `lib/` · `public/` · `tests/`, isi
 `tailwind.config.js` dan `app/globals.css`, `git log` (38 komit), serta
-`npm test` (184/184 lulus). Bagian bertanda `[TINJAU]` menunggu konfirmasi
-pemilik proyek dan belum boleh dianggap final.*
+`npm test` (184/184 lulus), penghitungan langsung tabel Supabase, serta pemindaian
+ruang kerja. Seluruh 6 penanda `[TINJAU]` semula sudah **dilepas semua** pada
+tanggal yang sama; berkas ini diserahkan tanpa klaim yang menunggu konfirmasi.*

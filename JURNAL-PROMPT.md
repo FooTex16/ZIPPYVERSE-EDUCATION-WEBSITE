@@ -7,10 +7,10 @@ dari `LOG-PROMPT-MENTAH.md`** — tidak diringkas dan tidak ditulis ulang.
 | Slot | Kategori | Waktu (WIB) | Prompt |
 | --- | --- | --- | --- |
 | 1 | Ide / PRD | 11 Okt 2026 13:48 | #8 |
-| 2 | Debugging | 15 Okt 2026 12:45 | #73 |
+| 2 | Debugging | 15 Okt 2026 12:45 | #70 |
 | 3 | Audit & Optimasi | 13 Okt 2026 13:10 | #34 |
 | 4 | Finishing | 11 Okt 2026 20:06 | #15 |
-| 5 | Bebas (deploy & verifikasi) | 15 Okt 2026 16:08 | #77 |
+| 5 | Bebas (deploy & verifikasi) | 15 Okt 2026 16:08 | #74 |
 
 ---
 
@@ -62,8 +62,8 @@ tercatat di log:
 | Waktu | Prompt | Yang diminta |
 | --- | --- | --- |
 | 6 Okt 14:24 | #6 | *"bagus coba kamu buatkan prd dari website ini dalam format .md"* — permintaan PRD pertama; berkasnya tidak pernah masuk repo |
-| 15 Okt 11:23 | #70 | Draf dokumen acuan AI Agent dengan struktur 5 bagian (Tujuan, Stack, Fitur, Aturan Kerja, Catatan Pengembangan) + tanda `[TINJAU]` |
-| 15 Okt 17:18 | #79 | Perintah final: baca ulang seluruh project, perbarui `AGENTS.md` dengan struktur wajib 5 bagian, setiap klaim wajib dapat diverifikasi dari kode |
+| 15 Okt 11:23 | #67 | Draf dokumen acuan AI Agent dengan struktur 5 bagian (Tujuan, Stack, Fitur, Aturan Kerja, Catatan Pengembangan) + tanda `[TINJAU]` |
+| 15 Okt 17:18 | #76 | Perintah final: baca ulang seluruh project, perbarui `AGENTS.md` dengan struktur wajib 5 bagian, setiap klaim wajib dapat diverifikasi dari kode |
 
 Jadi alurnya jujur seperti ini: **ide diminta ke AI → AI mengusulkan → saya
 memilih satu → AI langsung membangun → acuan ditulis belakangan dari isi kode
@@ -73,17 +73,19 @@ yang sudah jadi**, bukan sebaliknya.
 
 `AGENTS.md` lahir dari komit `58b09be` (*docs: tambah AGENTS.md sebagai acuan
 AI Agent*, 15 Okt 17:33 WIB, 503 baris). Karena dokumen ini disusun **setelah
-kode jadi**, ia memuat 4 tanda `[TINJAU]` yang menunggu keputusan Anda —
-paling penting: instrumen lomba menyebut *"website edukasi coding anak SD"*,
-sedangkan konten yang benar-benar ada di kode adalah pelajaran umum dan
-**Pulau Digital (satu-satunya pulau teknologi) masih `available: false` tanpa
-satu misi pun**.
+kode jadi**, ia memuat 6 tanda `[TINJAU]`. Semuanya **sudah diselesaikan pada
+15 Okt 2026** dengan bukti pengambilan langsung. Temuan terpenting justru
+membantah premis draf awal: instrumen lomba **tidak** meminta *"website edukasi
+coding"*, melainkan subtema *"Web Education for Kids (untuk anak SD)"*
+(Prompt #61) — sehingga isi kode berupa pelajaran umum SD **sudah sesuai**.
+`Pulau Digital` (satu-satunya pulau teknologi) memang masih `available: false`
+tanpa satu misi pun, tetapi itu peta jalan, bukan syarat penilaian.
 
 ---
 
 ### Slot 2 — Debugging
 
-**Prompt (asli):** (LOG-PROMPT-MENTAH.md **Prompt #73** · 2026-10-15 12:45:08 WIB)
+**Prompt (asli):** (LOG-PROMPT-MENTAH.md **Prompt #70** · 2026-10-15 12:45:08 WIB)
 
 ```
 Ada bug pada project ini. Kerjakan dengan alur berikut (jangan langsung
@@ -112,7 +114,7 @@ Laporkan hasil tiap langkah. Simpan ringkasan ke JURNAL-DEBUGGING.md
 
 Prompt ini adalah **pemberhenti kebiasaan menebak**. Sebelumnya bug diperbaiki
 sekenanya; sejak prompt ini, setiap perbaikan wajib melewati enam langkah.
-Sehari sebelumnya (15 Okt 11:49, Prompt #71) saya memanggil perburuan bug
+Sehari sebelumnya (15 Okt 11:49, Prompt #68) saya memanggil perburuan bug
 menyeluruh halaman demi halaman — hasilnya `LAPORAN-BUG.md` (23 KB) berisi
 temuan berjenjang tanpa satu pun perbaikan, sesuai perintah *"JANGAN memperbaiki
 dulu — hanya laporkan."*
@@ -206,7 +208,7 @@ maskot tak pernah kosong*) yang memperbaiki empat hal sekaligus:
 3. 14 ekspresi maskot dipra-muat saat perangkat menganggur (`lib/preload.js`).
 4. Dua PNG mati (2,1 MB) dihapus; berkas statis diberi masa simpan cache.
 
-Audit lanjutan untuk kesiapan submit ada di **Prompt #68** (15 Okt 11:05,
+Audit lanjutan untuk kesiapan submit ada di **Prompt #65** (15 Okt 11:05,
 *"Lakukan audit akhir project ini untuk kesiapan lomba"*) yang menghasilkan
 `CEK-AKHIR.md` (11,7 KB).
 
@@ -252,10 +254,10 @@ panjang membakar token.
 
 **Iterasi berikutnya:**
 
-Keluhan serupa muncul kembali pada **Prompt #44** (13 Okt 21:46) untuk suara —
+Keluhan serupa muncul kembali pada **Prompt #41** (13 Okt 21:46) untuk suara —
 voice over dianggap monoton *"itu itu aja"*, dan soal `10 + 5` diucapkan *"sepuluh
 oh lima"* tanpa kata "tambah"/"kurang". Perbaikan lanjutan mencakup variasi
-voice over plus pengingat bila anak diam 10 detik. Prompt **#43** dan **#50**
+voice over plus pengingat bila anak diam 10 detik. Prompt **#40** dan **#47**
 menambahkan sentuhan akhir berupa halaman admin, kartu yang mengembang saat
 hover/tekan, dan kolom kirim masukan.
 
@@ -263,7 +265,7 @@ hover/tekan, dan kolom kirim masukan.
 
 ### Slot 5 — Bebas: Deploy & Verifikasi
 
-**Prompt (asli):** (LOG-PROMPT-MENTAH.md **Prompt #77** · 2026-10-15 16:08:23 WIB)
+**Prompt (asli):** (LOG-PROMPT-MENTAH.md **Prompt #74** · 2026-10-15 16:08:23 WIB)
 
 ```
 Website sudah di-deploy ke hosting. Verifikasi di URL live:
@@ -322,20 +324,20 @@ memicu deploy**), lalu melakukan deploy ulang. Setelah itu `mode` pada respons
 
 | Slot | Sumber prompt | File / commit | Status |
 | --- | --- | --- | --- |
-| 1 — Ide/PRD | `LOG-PROMPT-MENTAH.md` #8, #9, #6, #70, #79 | `AGENTS.md` · komit `58b09be` | **LENGKAP** |
-| 2 — Debugging | `LOG-PROMPT-MENTAH.md` #73, #71 | `JURNAL-DEBUGGING.md` (di luar repo) · `LAPORAN-BUG.md` (di luar repo) · 12 komit `fix` `b479eca`…`603b146` | **LENGKAP** |
-| 3 — Audit & Optimasi | `LOG-PROMPT-MENTAH.md` #34, #68 | `AUDIT_REPORT.md` (di luar repo) · `CEK-AKHIR.md` (di luar repo) · komit `a2935de` | **LENGKAP** — kutipan prompt dipotong berlabel, teks penuh di log |
-| 4 — Finishing | `LOG-PROMPT-MENTAH.md` #15, #44, #43, #50 | `app/api/zippy/route.js` (`buildHistory`, `MAX_HISTORY`, `MAX_MSG_CHARS`) · `tailwind.config.js` · `app/globals.css` | **LENGKAP** |
-| 5 — Bebas (deploy) | `LOG-PROMPT-MENTAH.md` #77 | `VERIFIKASI-DEPLOY.md` (di luar repo) · komit `603b146` · `lib/situsUrl.js` · `app/icon.svg` | **LENGKAP** |
+| 1 — Ide/PRD | `LOG-PROMPT-MENTAH.md` #8, #9, #6, #67, #76 | `AGENTS.md` · komit `58b09be` | **LENGKAP** |
+| 2 — Debugging | `LOG-PROMPT-MENTAH.md` #70, #68 | `JURNAL-DEBUGGING.md` (di luar repo) · `LAPORAN-BUG.md` (di luar repo) · 12 komit `fix` `b479eca`…`603b146` | **LENGKAP** |
+| 3 — Audit & Optimasi | `LOG-PROMPT-MENTAH.md` #34, #65 | `AUDIT_REPORT.md` (di luar repo) · `CEK-AKHIR.md` (di luar repo) · komit `a2935de` | **LENGKAP** — kutipan prompt dipotong berlabel, teks penuh di log |
+| 4 — Finishing | `LOG-PROMPT-MENTAH.md` #15, #41, #40, #47 | `app/api/zippy/route.js` (`buildHistory`, `MAX_HISTORY`, `MAX_MSG_CHARS`) · `tailwind.config.js` · `app/globals.css` | **LENGKAP** |
+| 5 — Bebas (deploy) | `LOG-PROMPT-MENTAH.md` #74 | `VERIFIKASI-DEPLOY.md` (di luar repo) · komit `603b146` · `lib/situsUrl.js` · `app/icon.svg` | **LENGKAP** |
 
 ### Catatan yang belum beres
 
 | Hal | Keadaan |
 | --- | --- |
-| `ANALISIS-KESESUAIAN.md` | **BELUM ADA.** Diminta oleh Prompt #64 (15 Okt 10:28) tetapi berkasnya tidak pernah dibuat |
+| `ANALISIS-KESESUAIAN.md` | **BELUM ADA.** Diminta oleh Prompt #61 (15 Okt 10:28) tetapi berkasnya tidak pernah dibuat |
 | `PRD.md` | **BELUM PERNAH ADA.** Diminta Prompt #6 (6 Okt) tetapi tidak pernah menjadi berkas; digantikan `AGENTS.md` |
 | 6 file kerja (`JURNAL-DEBUGGING`, `LAPORAN-BUG`, `AUDIT_REPORT`, `CEK-AKHIR`, `REKONSTRUKSI-ALUR`, `REKONSTRUKSI-SLOT1`, `VERIFIKASI-DEPLOY`, `KERANGKA-JURNAL`) | Semuanya ada, tetapi **di luar repo** — hanya `AGENTS.md`, `LOG-PROMPT-MENTAH.md`, `README.md` yang ikut ter-commit |
-| 4 tanda `[TINJAU]` di `AGENTS.md` | Masih menunggu keputusan Anda |
+| 6 tanda `[TINJAU]` di `AGENTS.md` | **SUDAH DISELESAIKAN** 15 Okt 2026 — berkas kini tanpa `[TINJAU]` |
 
 ---
 
