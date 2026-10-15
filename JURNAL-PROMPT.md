@@ -134,11 +134,13 @@ Bug-bug yang menjadi sasaran alur ini nyata dan tercatat di `git log`:
 
 **Hasil / tindakan AI:**
 
-Dua belas komit `fix` mendarat sepanjang 14–15 Okt dengan pesan berformat
-`fix: [fitur] - [masalah] ([penyebab])` — format yang lahir langsung dari
-butir 5 prompt di atas. Ringkasan lengkap setiap entri (gejala → akar masalah →
-perbaikan → verifikasi) tersimpan di **`JURNAL-DEBUGGING.md`** (37 KB, 7 entri,
-15 pelajaran) beserta `LAPORAN-BUG.md` (23 KB) sebagai dokumen temuan awal.
+Sebanyak **18 komit `fix`** mendarat sepanjang 14–15 Okt. **Enam** di antaranya
+memakai format penuh `fix: [fitur] - [masalah] ([penyebab])` yang lahir langsung
+dari butir 5 prompt di atas; 12 sisanya tetap deskriptif namun tanpa bagian
+`([penyebab])`. Tabel di atas memuat 10 yang paling mewakili — daftar lengkap
+ada di `git log`. Ringkasan tiap entri (gejala → akar masalah → perbaikan →
+verifikasi) tersimpan di **`JURNAL-DEBUGGING.md`** (37 KB, 7 entri, 15 pelajaran)
+beserta `LAPORAN-BUG.md` (23 KB) sebagai dokumen temuan awal.
 
 **Iterasi berikutnya:**
 
