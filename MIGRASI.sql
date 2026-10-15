@@ -99,7 +99,11 @@ create table if not exists public.planets (
   icon        text,
   color       text,
   tagline     text,
-  desc        text,
+  -- Nama kolomnya `description`, bukan `desc`. Ini mengikuti keadaan tabel
+  -- yang sudah ada di proyek Supabase; kedua sisi kode (app/api/admin/route.js
+  -- untuk MENULIS, lib/konten.js untuk MEMBACA) sudah menerjemahkan bentuk
+  -- internal `desc` <-> kolom `description` ini.
+  description text,
   -- Posisi di peta, disimpan sebagai JSON: { top, left } per breakpoint.
   positions   jsonb not null default '{}'::jsonb,
   -- urutan di rantai permainan; pulau ke-n hanya terbuka setelah ke-(n-1)

@@ -802,7 +802,12 @@ export async function POST(req) {
         icon: p.icon ?? null,
         color: p.color ?? null,
         tagline: p.tagline ?? null,
-        desc: p.desc ?? null,
+        // Kolom di tabel Supabase bernama `description`, sedangkan bentuk data
+        // internal aplikasi memakai `desc` (lihat ISLANDS di lib/gameData.js,
+        // form di PanelPulau.jsx, dan pemeriksaan di validasiKonten.js).
+        // Penerjemahan terjadi HANYA di sini, di batas database - supaya
+        // bentuk dalam aplikasi tidak perlu diubah di banyak berkas.
+        description: p.desc ?? null,
         positions: p.positions || {},
         urutan: i,
         soon: !!p.soon,

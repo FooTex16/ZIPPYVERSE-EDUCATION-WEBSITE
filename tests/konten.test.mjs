@@ -432,6 +432,57 @@ describe("susunDariTabel - baris Supabase menjadi isi permainan", () => {
   });
 });
 
+describe("susunDariTabel - penerjemahan kolom description", () => {
+  // Kolom di tabel Supabase bernama `description`, sedangkan bentuk data
+  // internal aplikasi memakai `desc` (lihat ISLANDS di lib/gameData.js).
+  //
+  // Penerjemahan ini pernah lupa di sisi PENULISAN, sehingga panel admin
+  // selalu membalas "Gagal menulis planet: Kolom yang diminta tidak ada"
+  // (Postgres PGRST204) dan isi yang diterapkan tidak pernah sampai ke
+  // akun mana pun. Uji ini mencegah kegagalan yang sama terulang.
+  const baris = {
+    slug: "tes-desc",
+    name: "Pulau Tes",
+    urutan: 0,
+    soon: false,
+    description: "Deskripsi dari tabel Supabase",
+    positions: { lg: { top: "1%", left: "1%" } },
+  };
+
+  it("kolom description di tabel menjadi properti desc di permainan", () => {
+    const isi = K.susunDariTabel([baris], []);
+    assert.equal(isi.planets.length, 1);
+    assert.equal(isi.planets[0].desc, "Deskripsi dari tabel Supabase");
+  });
+
+  it("description bernilai null menghasilkan desc null, bukan properti nyasar", () => {
+    const isi = K.susunDariTabel([{ ...baris, description: null }], []);
+    assert.equal(isi.planets[0].desc, null);
+    assert.equal("description" in isi.planets[0], false, "bentuk internal tidak boleh membawa nama kolom tabel");
+  });
+
+  it("baris yang tidak punya description pun tetap sah", () => {
+    const tanpaDesc = { ...baris };
+    delete tanpaDesc.description;
+    // Muatan selalu butuh minimal satu misi - pemeriksaan validasi menolak
+    // muatan tanpa misi sama sekali, apa pun isi planetnya.
+    const isi = K.susunDariTabel([tanpaDesc], [
+      {
+        planet_slug: "tes-desc",
+        urutan: 0,
+        tipe: "mcq",
+        nama: "Misi 1",
+        title: "Soal Pertama",
+        rounds: [{ q: "Berapa 1+1?", a: "2", o: ["2", "3"] }],
+        reward: 25,
+        xp: 20,
+      },
+    ]);
+    assert.equal(isi.planets[0].desc, null);
+    assert.equal(periksaKonten(isi).sah, true, periksaKonten(isi).galat.join(" | "));
+  });
+});
+
 /** tulisDraf membalas false bila penyimpanan gagal; uji memakai versi aman. */
 function tulisAman(isi) {
   try {
