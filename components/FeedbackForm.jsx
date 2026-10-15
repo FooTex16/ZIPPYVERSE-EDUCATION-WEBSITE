@@ -214,9 +214,19 @@ export default function FeedbackForm() {
 
     setTautan(url);
     setTerkirim(true);
-    // Jendela email dibuka setelah state tersimpan, supaya komponen sudah
-    // menampilkan layar "terkirim" bahkan bila peramban menahan popup.
-    window.location.href = url;
+    // Jendela email harus dibuka SETELAH layar "terkirim" benar-benar muncul.
+    //
+    // `setState` di React hanya dijadwalkan dan baru diterapkan setelah
+    // penangan event selesai, sedangkan `window.location.href` di bawah ini
+    // dijalankan pada tick yang sama. Peramban jadi sempat menyiapkan
+    // navigasi `mailto:` sebelum state sempat dirender, dan ketika navigasi
+    // itu ditolak (tidak ada aplikasi email terpasang), penantian React
+    // ikut terbuang - tombol terjebak di "Mengirim..." tanpa kabar apa pun,
+    // meski server sudah menjawab 200. Ditunggu satu makrotask agar state
+    // terkunci lebih dulu; layar sukses tetap tampil walau navigasi gagal.
+    setTimeout(() => {
+      window.location.href = url;
+    }, 0);
   }
 
   function ulangi() {
