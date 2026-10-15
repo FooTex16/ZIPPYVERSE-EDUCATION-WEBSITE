@@ -93,27 +93,27 @@ export default function ShopModal({ open, onClose, save, onChange }) {
                           tahu apa yang didapatnya dengan membayar koin, dan
                           toko terasa sekadar ganti gambar. */}
                       {c.perk ? (
-                        <span className="flex items-start gap-1 rounded-2xl bg-zippy-mint/45 px-2 py-1 text-center text-[10px] leading-tight font-bold text-zippy-navy">
+                        <span className="flex items-start gap-1 rounded-2xl bg-zippy-mint/45 px-2 py-1 text-center text-xs leading-tight font-bold text-zippy-navy">
                           <Sparkles className="mt-px h-3 w-3 shrink-0 text-zippy-teal" strokeWidth={3} />
                           {c.perk}
                         </span>
                       ) : (
-                        <span className="rounded-2xl bg-zippy-navy/6 px-2 py-1 text-center text-[10px] leading-tight font-bold text-zippy-navy/55">
+                        <span className="rounded-2xl bg-zippy-navy/6 px-2 py-1 text-center text-xs leading-tight font-bold text-zippy-navy/55">
                           Kostum awal Zippy
                         </span>
                       )}
 
                       {active ? (
-                        <span className="flex items-center gap-1 rounded-full bg-zippy-teal px-3 py-1 text-[11px] font-black text-white">
+                        <span className="flex items-center gap-1 rounded-full bg-zippy-teal px-3 py-1 text-xs font-black text-white">
                           <Check className="h-3 w-3" strokeWidth={3.5} /> Dipakai
                         </span>
                       ) : has ? (
-                        <span className="rounded-full bg-zippy-mint/60 px-3 py-1 text-[11px] font-black text-zippy-navy">
+                        <span className="rounded-full bg-zippy-mint/60 px-3 py-1 text-xs font-black text-zippy-navy">
                           Pakai
                         </span>
                       ) : (
                         <span
-                          className={`flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-black ${
+                          className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${
                             poor ? "bg-zippy-navy/10 text-zippy-navy/45" : "bg-zippy-yellow text-zippy-navy"
                           }`}
                         >

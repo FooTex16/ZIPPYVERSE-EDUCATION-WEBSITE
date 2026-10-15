@@ -447,11 +447,11 @@ export default function IslandPage() {
                       {m.name}
                     </span>
                     {tamat ? (
-                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-400 px-2.5 py-1 text-[11px] font-black text-zippy-navy">
+                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-400 px-2.5 py-1 text-xs font-black text-zippy-navy">
                         <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={3} /> Tamat
                       </span>
                     ) : best !== undefined ? (
-                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-400 px-2.5 py-1 text-[11px] font-black text-zippy-navy">
+                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-400 px-2.5 py-1 text-xs font-black text-zippy-navy">
                         <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={3} /> Selesai
                       </span>
                     ) : !unlocked ? (

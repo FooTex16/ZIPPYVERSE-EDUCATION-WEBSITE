@@ -138,14 +138,14 @@ export default function SpeechMenu() {
           </div>
 
           {cakupan > 0 ? (
-            <p className="mb-3 rounded-2xl bg-zippy-teal/15 p-2.5 text-[11px] font-bold leading-snug text-zippy-navy/80">
+            <p className="mb-3 rounded-2xl bg-zippy-teal/15 p-2.5 text-xs font-bold leading-snug text-zippy-navy/80">
               Semua soal sudah terekam dengan suara Zippy berbahasa Indonesia, jadi logatnya tetap
               benar di HP apa pun dan tetap berbunyi walaupun tanpa internet.
             </p>
           ) : (
             !adaIndo &&
             suara.length > 0 && (
-              <p className="mb-3 rounded-2xl bg-zippy-yellow/35 p-2.5 text-[11px] font-bold leading-snug">
+              <p className="mb-3 rounded-2xl bg-zippy-yellow/35 p-2.5 text-xs font-bold leading-snug">
                 <span className="mb-1 flex items-start gap-1.5">
                   <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.6} />
                   <span>
@@ -160,7 +160,7 @@ export default function SpeechMenu() {
             )
           )}
 
-          <p className="mb-1 text-[11px] font-black uppercase tracking-wider text-zippy-navy/50">
+          <p className="mb-1 text-xs font-black uppercase tracking-wider text-zippy-navy/50">
             {cakupan > 0 ? "Suara cadangan perangkat" : "Pilih suara Zippy"}
           </p>
 
@@ -185,7 +185,7 @@ export default function SpeechMenu() {
                   <span className="flex shrink-0 items-center gap-1">
                     {indo && (
                       <span
-                        className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                        className={`rounded-full px-1.5 py-0.5 text-xs ${
                           dipilih ? "bg-white/25 text-white" : "bg-zippy-yellow text-zippy-navy"
                         }`}
                       >
@@ -200,7 +200,7 @@ export default function SpeechMenu() {
           </div>
 
           {aktifKini && (
-            <p className="mt-2 truncate text-[11px] font-bold text-zippy-navy/55">
+            <p className="mt-2 truncate text-xs font-bold text-zippy-navy/55">
               Dipakai: {aktifKini.lang || "tanpa kode bahasa"}
             </p>
           )}

@@ -301,7 +301,7 @@ export default function FeedbackForm() {
               </motion.button>
             </div>
 
-            <p className="mt-4 break-all rounded-2xl bg-black/25 px-3 py-2 text-[11px] font-semibold text-white/55">
+            <p className="mt-4 break-all rounded-2xl bg-black/25 px-3 py-2 text-xs font-semibold text-white/55">
               Alamat pengembang: {EMAIL_PENGEMBANG}
             </p>
           </motion.div>
@@ -404,16 +404,22 @@ export default function FeedbackForm() {
                 Sisa hari ini: {sisa} dari {BATAS_HARIAN}
               </span>
 
+              {/* `min-h-10` menjamin tinggi sentuh 40 px pada semua lebar.
+                  Tanpa itu tingginya hanya setinggi teks: 16 px bila muat satu
+                  baris, 32 px bila membungkus di layar 320 px - keduanya di
+                  bawah 40 px dan sulit ditekan dengan ibu jari. */}
               <a
                 href={`mailto:${EMAIL_PENGEMBANG}`}
-                className="inline-flex items-center gap-1.5 text-xs font-black text-zippy-mint underline underline-offset-4 transition hover:text-zippy-yellow"
+                className="inline-flex min-h-10 items-center gap-1.5 text-xs font-black text-zippy-mint underline underline-offset-4 transition hover:text-zippy-yellow"
               >
                 <Mail className="h-4 w-4" strokeWidth={3} />
                 Atau kirim manual ke {EMAIL_PENGEMBANG}
               </a>
             </div>
 
-            <p className="rounded-2xl bg-white/6 px-4 py-2.5 text-[11px] font-semibold leading-relaxed text-white/55">
+            {/* 11 px -> 12 px: ini bagian dari halaman beranda, jadi aturan
+                huruf minimal 12 px ikut berlaku padanya. */}
+            <p className="rounded-2xl bg-white/6 px-4 py-2.5 text-xs font-semibold leading-relaxed text-white/55">
               Pesan dibuka di aplikasi email Anda lalu dikirim langsung ke
               pengembang. <b className="text-white/75">Tidak ada pihak ketiga</b>{" "}
               yang ikut meneruskan. Demi kenyamanan bersama, pengiriman
