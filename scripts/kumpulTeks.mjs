@@ -84,6 +84,7 @@ function salinModul(nama, gantian = []) {
 }
 
 salinModul("missionsExtra");
+const { SOAL_HARIAN } = await import(salinModul("missionsExtra"));
 const { MISSIONS } = await import(
   salinModul("gameData", [['"./missionsExtra.js"', '"./missionsExtra.mjs"']])
 );
@@ -155,6 +156,17 @@ for (const [slug, daftar] of Object.entries(MISSIONS)) {
 }
 
 for (const t of TEKS_TETAP) catat(t, "instruksi");
+
+// SELURUH bank Tantangan Harian, bukan hanya lima soal yang dipilih untuk
+// hari ini. Penyusunan `MISSIONS` di atas sudah menyentuh DAILY_CHALLENGE,
+// tetapi isinya hanya hasil seededShuffle tanggal berjalan (5 dari 38) -
+// lihat komentar SOAL_HARIAN di lib/missionsExtra.js. Tanpa blok ini,
+// 33 soal sisanya tidak pernah punya rekaman dan besok anak mendengar
+// suara perangkat, bukan suara Zippy.
+for (const r of SOAL_HARIAN) {
+  catat(r.q, "q");
+  if (r.hint) catat(r.hint, "hint");
+}
 
 // Balasan ngobrol Zippy: sapaan, balasan tetap, dan seluruh isi FAQ otak
 // lokal. Bagian ini yang membuat jawaban chat tetap berlogat Indonesia,
