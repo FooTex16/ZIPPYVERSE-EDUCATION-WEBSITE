@@ -26,6 +26,8 @@ import {
   spendStamina,
   staminaInfo,
   STAMINA_PER_MISSION,
+  biayaUlangMisi,
+  beliUlangMisi,
 } from "@/lib/store";
 import { play, unlockAudio, setSfxEnabled } from "@/lib/sfx";
 import LoadingMeteors from "@/components/LoadingMeteors";
@@ -61,6 +63,10 @@ export default function IslandPage() {
   // Layar istirahat: muncul saat energi habis.
   const [istirahat, setIstirahat] = useState(false);
   const startedRef = useRef(null);
+  // Penghitung pengulangan: tiap kali anak memulai ulang misi di pulau yang
+  // sudah dibeli izin urungnya, angka ini naik. Dipakai sebagai benih acak
+  // supaya urutan jawaban berubah tiap kali, tapi soalnya tetap sama.
+  const [repeatCount, setRepeatCount] = useState(0);
 
   useEffect(() => {
     setSave(touchStreak());
@@ -139,6 +145,9 @@ export default function IslandPage() {
     }
     spendStamina(STAMINA_PER_MISSION);
     setSave(load());
+    // Kalau ini pengulangan (izin sudah dibeli), naikkan penghitung supaya
+    // urutan jawaban berbeda dari sebelumnya.
+    if (save?.islands?.[slug]?.ulang) setRepeatCount((c) => c + 1);
     play("levelup");
     setActive(m);
     setPhase("main");
@@ -281,9 +290,13 @@ export default function IslandPage() {
     // bisa didapat lewat Tantangan Harian atau tantangan besok.
     const isDaily = slug === DAILY_ISLAND.slug;
     const dailyKey = `daily-${today()}`;
-    const tamat = !isDaily && Boolean(save.islands?.[slug]?.done);
+    const sudahBeliUlang = Boolean(save.islands?.[slug]?.ulang);
+    const tamat = !isDaily && Boolean(save.islands?.[slug]?.done) && !sudahBeliUlang;
+    const bisaUlang = !isDaily && Boolean(save.islands?.[slug]?.done) && sudahBeliUlang;
     const dailyHariIni = isDaily && Boolean(doneMissions[dailyKey]);
     const energi = staminaInfo(save);
+    const hargaUlang = biayaUlangMisi();
+    const koinKurang = save.coins < hargaUlang;
 
     return (
       <main className="space-bg relative min-h-screen overflow-x-clip">
@@ -357,18 +370,64 @@ export default function IslandPage() {
 
           {/* Pulau tamat / hadiah harian sudah habis hari ini */}
           {tamat && (
-            <div className="mb-6 flex items-start gap-3 rounded-3xl border-4 border-emerald-300/40 bg-emerald-400/15 p-4">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-400 text-zippy-navy">
-                <Trophy className="h-5 w-5" strokeWidth={2.8} />
+            <div className="mb-6 rounded-3xl border-4 border-emerald-300/40 bg-emerald-400/15 p-4">
+              <div className="flex items-start gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-400 text-zippy-navy">
+                  <Trophy className="h-5 w-5" strokeWidth={2.8} />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-display text-base font-bold text-white">
+                    Pulau ini sudah tamat!
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold leading-snug text-white/70">
+                    Semua misinya sudah selesai. Beli izin ulang untuk
+                    mengulang misinya lagi — koinnya <b>50%</b> dari hadiah
+                    asli, dan soalnya tetap sama tapi urutan jawabannya diacak.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  disabled={koinKurang}
+                  onClick={() => {
+                    const hasil = beliUlangMisi(slug);
+                    if (hasil.ok) {
+                      setSave(hasil.s);
+                      play("yeay");
+                    } else {
+                      play("wrong");
+                    }
+                  }}
+                  className={`btn-pop flex shrink-0 items-center gap-2 rounded-2xl px-4 py-2.5 font-black transition ${
+                    koinKurang
+                      ? "cursor-not-allowed bg-white/10 text-white/40"
+                      : "bg-zippy-yellow text-zippy-navy hover:bg-zippy-yellow/90"
+                  }`}
+                >
+                  <Coins className="h-4 w-4" strokeWidth={3} />
+                  Ulang Misi — {hargaUlang} koin
+                </button>
+                {koinKurang && (
+                  <p className="text-xs font-bold text-white/60">
+                    Kurang {hargaUlang - save.coins} koin lagi.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+          {bisaUlang && (
+            <div className="mb-6 flex items-start gap-3 rounded-3xl border-4 border-zippy-teal/60 bg-zippy-teal/15 p-4">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-zippy-teal text-white">
+                <Play className="h-5 w-5" strokeWidth={2.8} />
               </span>
               <div className="min-w-0">
                 <p className="font-display text-base font-bold text-white">
-                  Pulau ini sudah tamat!
+                  Izin ulang aktif — main lagi yuk!
                 </p>
                 <p className="mt-0.5 text-sm font-semibold leading-snug text-white/70">
-                  Semua misinya sudah selesai jadi tidak bisa diulang. Untuk
-                  mendapatkan koin lagi, selesaikan <b>Tantangan Harian</b> di
-                  peta — hadiahnya kembali penuh besok pagi.
+                  Semua misi di pulau ini bisa diulang tanpa batas. Koin yang
+                  didapat <b>50%</b> dari hadiah asli, dan urutan jawaban diacak
+                  setiap kali.
                 </p>
               </div>
             </div>
@@ -416,7 +475,7 @@ export default function IslandPage() {
 
           {/* Daftar misi */}
           <h2 className="mb-4 font-display text-xl font-bold text-white sm:text-2xl">
-            {tamat ? "Semua Misi Selesai" : "Pilih Misi"}
+            {tamat ? "Semua Misi Selesai" : bisaUlang ? "Ulang Misi" : "Pilih Misi"}
           </h2>
           <div className="grid gap-4 md:grid-cols-3">
             {missions.map((m, i) => {
@@ -476,11 +535,13 @@ export default function IslandPage() {
                       title={
                         tamat
                           ? "Pulau sudah tamat, tidak ada koin tambahan"
-                          : undefined
+                          : bisaUlang
+                            ? "Izin ulang aktif: koin 50% dari hadiah asli"
+                            : undefined
                       }
                     >
                       <Coins className="h-4 w-4" strokeWidth={3} />
-                      {tamat ? 0 : m.reward}
+                      {tamat ? 0 : bisaUlang ? Math.round(m.reward * 0.5) : m.reward}
                     </span>
                     <span className="flex items-center gap-1 text-zippy-mint">
                       <Star className="h-4 w-4" strokeWidth={3} />+{m.xp} XP
@@ -508,7 +569,9 @@ export default function IslandPage() {
               speech={
                 tamat
                   ? "Luar biasa! Semua misi tamat, Sahabat!"
-                  : "Pilih misi yang mau kamu main, Sahabat!"
+                  : bisaUlang
+                    ? "Izin ulang aktif! Main lagi kapan saja, Sahabat!"
+                    : "Pilih misi yang mau kamu main, Sahabat!"
               }
             />
           </div>
@@ -574,7 +637,7 @@ export default function IslandPage() {
         </header>
 
         <div className="relative z-10 mx-auto max-w-5xl px-4 pb-10">
-          <Comp mission={active} onDone={(res) => handleDone(res, active)} />
+          <Comp mission={active} onDone={(res) => handleDone(res, active)} repeat={repeatCount} />
         </div>
 
         {/* Ajakan menjawab bila anak diam. Dipasang sekali di sini supaya

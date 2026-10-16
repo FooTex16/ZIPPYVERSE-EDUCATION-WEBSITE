@@ -15,7 +15,7 @@ import { useBacakanSoal } from "@/lib/speech";
  * bisa menyelesaikan misi tanpa merasa gagal. Setelah dua kali salah,
  * tombol "Lewati" muncul sebagai jalan keluar.
  */
-export default function MissionMCQ({ mission, onDone }) {
+export default function MissionMCQ({ mission, onDone, repeat = 0 }) {
   const rounds = mission.rounds;
   const [idx, setIdx] = useState(0);
   const [score, setScore] = useState(0);
@@ -29,7 +29,12 @@ export default function MissionMCQ({ mission, onDone }) {
 
   // Opsi diacak supaya jawaban benar tidak selalu jatuh di posisi yang sama.
   // Tanpa ini, anak cukup menghafal "kiri atas" dan lulus semua soal.
-  const opts = useMemo(() => shuffleOptions(round, `${mission.id}-${idx}`), [round, idx, mission.id]);
+  // `repeat` menaikkan benih tiap kali misi diulang (izin ulang sudah dibeli),
+  // sehingga urutan jawaban berbeda setiap kali meski soalnya tetap sama.
+  const opts = useMemo(
+    () => shuffleOptions(round, `${mission.id}-${idx}-${repeat}`),
+    [round, idx, mission.id, repeat]
+  );
 
   useEffect(() => {
     if (done && doneRef.current && !reportedRef.current) {

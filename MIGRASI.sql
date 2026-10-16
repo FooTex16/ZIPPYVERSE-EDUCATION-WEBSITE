@@ -222,3 +222,35 @@ create policy profiles_tulis_sendiri on public.profiles
 drop policy if exists profiles_ubah_sendiri on public.profiles;
 create policy profiles_ubah_sendiri on public.profiles
   for update using (auth.uid() = id);
+
+-- ============================================================
+-- Tabel pengaturan — harga kostum, batas energi, hadiah harian
+-- ============================================================
+--
+-- SELAMA INI pengaturan konten disimpan HANYA di localStorage perangkat
+-- admin (lib/adminConfig.js, key `zippyverse_admin_config_v1`). Akibatnya
+-- setiap perangkat anak memakai nilai BAWAAN, berapa pun admin mengubah
+-- harga di panel. Tabel ini menyimpan satu baris pengaturan global supaya
+-- seluruh perangkat melihat nilai yang sama.
+--
+-- Kolom `nilai` berbentuk jsonb karena isinya mengikuti struktur CONFIG_BAWAAN
+-- di lib/adminConfig.js dan bisa berubah tanpa perlu migrasi kolom.
+
+create table if not exists public.pengaturan (
+  kunci      text primary key,
+  nilai      jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+-- Hanya satu baris yang dipakai, dengan kunci tetap "utama".
+-- `updated_at` diperbarui otomatis supaya versi konten bisa dilacak.
+
+-- RLS: publik BOLEH membaca (perangkat anak perlu mengambilnya),
+-- tapi hanya pengelola yang boleh menulis (dicek di server lewat
+-- service_role, sehingga tidak perlu policy tulis untuk anon).
+
+alter table public.pengaturan enable row level security;
+
+drop policy if exists pengaturan_baca on public.pengaturan;
+create policy pengaturan_baca on public.pengaturan
+  for select using (true);

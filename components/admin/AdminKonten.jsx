@@ -3,15 +3,20 @@
 /**
  * Panel Admin — Pengaturan Konten
  *
- * Menyimpan angka-angka yang dulu ditulis mati di kode: harga kostum, hadiah
- * harian 7 hari, dan tiga nilai energi. Nilai gantinya disimpan di localStorage
- * perangkat ini lalu dibaca ulang oleh lib/store.js dan lib/gameData.js pada
- * setiap permainan berjalan.
+ * Menyimpan angka-angka yang dulu ditulis mati di kode: harga kostum, harga
+ * izin ulang misi, hadiah harian 7 hari, dan tiga nilai energi. Nilai gantinya
+ * disimpan di localStorage perangkat ini lalu dibaca ulang oleh lib/store.js
+ * dan lib/gameData.js pada setiap permainan berjalan.
+ *
+ * DUA LANGKAH SIMPAN:
+ *   1. "Simpan Pengaturan" — menyimpan ke localStorage perangkat ini saja.
+ *      Berguna untuk mencoba nilai sebelum menerbitkannya.
+ *   2. "Terbitkan ke Seluruh Perangkat" — mengirim ke tabel Supabase
+ *      `pengaturan`, sehingga SEMUA perangkat anak melihat nilai yang sama.
+ *      Tanpa langkah ini perubahan tetap terkurung di perangkat admin,
+ *      dan toko anak terus menampilkan harga bawaan.
  *
  * Catatan penting untuk admin:
- *   - Perubahan berlaku untuk PERANGKAT INI SAJA, bukan untuk semua pemain.
- *     Menyebarkannya ke semua pemain berarti mengubah nilai bawaan di
- *     lib/store.js dan membangun ulang aplikasi.
  *   - Semua nilai dibatasi rentang wajar oleh lib/adminConfig.js. Angka di
  *     luar batas dipangkas, bukan dipakai apa adanya, supaya panel tidak bisa
  *     membuat permainan tidak bisa dimainkan.
@@ -19,13 +24,14 @@
  */
 
 import { useEffect, useState } from "react";
-import { Save, RotateCcw, Coins, Zap, ListOrdered } from "lucide-react";
+import { Save, RotateCcw, Coins, Zap, ListOrdered, Globe } from "lucide-react";
 import {
   bacaConfig,
   tulisConfig,
   resetConfig,
   cocokDenganBawaan,
   CONFIG_BAWAAN,
+  simpanPengaturanAwan,
 } from "@/lib/adminConfig";
 import { daftarKostum } from "@/lib/gameData";
 import { play } from "@/lib/sfx";
@@ -35,6 +41,7 @@ const HARI = ["Senin ke-1", "Hari 2", "Hari 3", "Hari 4", "Hari 5", "Hari 6", "P
 export default function AdminKonten() {
   const [cfg, setCfg] = useState(null);
   const [pesan, setPesan] = useState("");
+  const [terbit, setTerbit] = useState(false);
 
   useEffect(() => {
     setCfg(bacaConfig());
@@ -53,7 +60,30 @@ export default function AdminKonten() {
     const baru = tulisConfig(cfg);
     setCfg(baru);
     play("pop");
-    umumkan("Pengaturan konten tersimpan dan langsung berlaku.");
+    umumkan("Pengaturan tersimpan di perangkat ini. Tekan Terbitkan supaya berlaku untuk semua anak.");
+  }
+
+  async function terbitkan() {
+    // Simpan dulu ke perangkat ini, baru kirim ke awan — supaya nilai yang
+    // diterbitkan selalu sama dengan yang sedang tampil di layar.
+    const bersih = tulisConfig(cfg);
+    setCfg(bersih);
+    setTerbit(true);
+    try {
+      const r = await simpanPengaturanAwan(bersih);
+      if (r.ok) {
+        play("yeay");
+        umumkan("Pengaturan diterbitkan — kini berlaku untuk seluruh perangkat anak.");
+      } else {
+        play("wrong");
+        umumkan(r.galat || "Gagal menerbitkan pengaturan.");
+      }
+    } catch {
+      play("wrong");
+      umumkan("Gagal menghubungi server. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setTerbit(false);
+    }
   }
 
   function kembalikan() {
@@ -84,7 +114,7 @@ export default function AdminKonten() {
       >
         {bersih
           ? "Semua pengaturan masih memakai nilai bawaan proyek."
-          : "Sebagian pengaturan sudah berubah dari nilai bawaan. Perubahan hanya berlaku di perangkat ini."}
+          : "Sebagian pengaturan sudah berubah dari nilai bawaan. Tekan Terbitkan supaya berlaku untuk semua perangkat anak."}
       </div>
 
       {/* Harga kostum */}
@@ -172,6 +202,21 @@ export default function AdminKonten() {
         </div>
       </section>
 
+      {/* Biaya izin ulang misi */}
+      <section className="rounded-3xl border-2 border-zippy-navy/10 bg-cream p-4 shadow-pop">
+        <h3 className="mb-1 flex items-center gap-2 font-display text-base font-bold text-zippy-navy sm:text-lg">
+          <RotateCcw className="h-5 w-5 text-zippy-teal" strokeWidth={2.8} /> Izin Ulang Misi
+        </h3>
+        <p className="mb-3 text-[11px] font-bold leading-relaxed text-zippy-navy/60">
+          Biaya yang dibayar anak untuk mengulang seluruh misi di pulau yang sudah
+          tamat. Setelah dibayar, pulau bisa dimainkan berulang kali dengan koin 50%.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Isi label="Biaya izin ulang (koin)" nilai={cfg.hargaUlangMisi} min={0} max={99999}
+            ubah={(v) => ubah({ hargaUlangMisi: v })} />
+        </div>
+      </section>
+
       {/* Aksi */}
       <div className="flex flex-wrap gap-2">
         <button
@@ -179,6 +224,18 @@ export default function AdminKonten() {
           className="btn-pop flex items-center gap-2 rounded-2xl bg-zippy-teal px-5 py-3 font-black text-white transition active:scale-95"
         >
           <Save className="h-5 w-5" strokeWidth={2.8} /> Simpan Pengaturan
+        </button>
+        <button
+          onClick={terbitkan}
+          disabled={terbit}
+          className={`btn-pop flex items-center gap-2 rounded-2xl px-5 py-3 font-black transition active:scale-95 ${
+            terbit
+              ? "cursor-wait bg-zippy-navy/40 text-white/60"
+              : "bg-zippy-yellow text-zippy-navy hover:bg-zippy-yellow/90"
+          }`}
+        >
+          <Globe className="h-5 w-5" strokeWidth={2.8} />
+          {terbit ? "Menerbitkan..." : "Terbitkan ke Seluruh Perangkat"}
         </button>
         <button
           onClick={kembalikan}
@@ -192,7 +249,8 @@ export default function AdminKonten() {
         Nilai bawaan proyek: energi maksimal <b>{CONFIG_BAWAAN.maxStamina}</b>, per misi{" "}
         <b>{CONFIG_BAWAAN.staminaPerMission}</b>, pulih tiap{" "}
         <b>{CONFIG_BAWAAN.staminaRegenMenit}</b> menit, hadiah harian{" "}
-        <b>{CONFIG_BAWAAN.dailyRewards.join(" → ")}</b> koin.
+        <b>{CONFIG_BAWAAN.dailyRewards.join(" → ")}</b> koin, izin ulang{" "}
+        <b>{CONFIG_BAWAAN.hargaUlangMisi}</b> koin.
       </p>
     </div>
   );

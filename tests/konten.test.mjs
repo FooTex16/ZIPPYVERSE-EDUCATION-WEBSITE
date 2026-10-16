@@ -491,3 +491,87 @@ function tulisAman(isi) {
     return false;
   }
 }
+
+// ============================================================
+// Kunci kemajuan stabil (permintaan 1)
+// ============================================================
+describe("susunDariTabel — kunci misi dibuat dari nomor urut", () => {
+  // Baris database selalu berisi uuid yang BERUBAH SETIAP KALI admin
+  // menerbitkan (route.js mengosongkan lalu menyisipkan ulang seluruh baris).
+  // Bila kunci kemajuan diambil dari uuid, sekali admin menekan "Terapkan"
+  // seluruh kemajuan anak tampak lenyap. Karena itu kuncinya harus dibuat
+  // dari nomor urut, bukan dari uuid.
+  const barisPlanet = [{ slug: "angka", name: "Pulau Angka", urutan: 0, soon: false }];
+  const barisMisi = (uuids) =>
+    uuids.map((id, i) => ({
+      id,
+      planet_slug: "angka",
+      urutan: i,
+      tipe: "mcq",
+      nama: `Misi ${i + 1}`,
+      title: `Soal ${i + 1}`,
+      rounds: [{ q: "Berapa 1+1?", a: "2", o: ["2", "3"] }],
+      reward: 25,
+      xp: 20,
+    }));
+
+  it("id dihasilkan dari slug dan nomor urut, bukan dari uuid baris", () => {
+    const isi = K.susunDariTabel(barisPlanet, barisMisi(["uuid-aaa", "uuid-bbb", "uuid-ccc"]));
+    assert.equal(isi.missions.angka[0].id, "angka:0");
+    assert.equal(isi.missions.angka[1].id, "angka:1");
+    assert.equal(isi.missions.angka[2].id, "angka:2");
+  });
+
+  it("uuid berbeda tetap menghasilkan kunci yang sama — inilah inti perbaikannya", () => {
+    const pertama = K.susunDariTabel(barisPlanet, barisMisi(["uuid-1", "uuid-2"]));
+    const kedua = K.susunDariTabel(barisPlanet, barisMisi(["uuid-9", "uuid-8"]));
+    assert.deepEqual(
+      pertama.missions.angka.map((m) => m.id),
+      kedua.missions.angka.map((m) => m.id),
+      "menerbitkan ulang tidak boleh mengubah kunci kemajuan"
+    );
+  });
+
+  it("baris tanpa id pun tetap menghasilkan kunci yang sama", () => {
+    const tanpaId = barisMisi(["a", "b"]).map(({ id, ...sisa }) => sisa);
+    const isi = K.susunDariTabel(barisPlanet, tanpaId);
+    assert.equal(isi.missions.angka[0].id, "angka:0");
+  });
+});
+
+describe("petaKunciLama — memetakan id statis lama ke kunci baru", () => {
+  it("menghasilkan pemetaan dari id isi bawaan ke kunci nomor urut", () => {
+    // `coba` adalah Pulau Perkenalan yang memang ada di isi bawaan, jadi
+    // AWAL_MISSIONS["coba"] tersedia dan id lamanya bisa dipetakan.
+    const isi = K.susunDariTabel(
+      [{ slug: "coba", name: "Pulau Perkenalan", urutan: 0, soon: false }],
+      [
+        { planet_slug: "coba", urutan: 0, tipe: "mcq", nama: "Misi 1", title: "T1",
+          rounds: [{ q: "1+1?", a: "2", o: ["2", "3"] }], reward: 20, xp: 15 },
+        { planet_slug: "coba", urutan: 1, tipe: "mcq", nama: "Misi 2", title: "T2",
+          rounds: [{ q: "2+2?", a: "4", o: ["4", "5"] }], reward: 20, xp: 15 },
+      ]
+    );
+    const peta = K.petaKunciLama(isi);
+
+    assert.ok(peta.coba, "harus ada pemetaan untuk pulau coba");
+    const nilai = Object.values(peta.coba);
+    assert.ok(nilai.includes("coba:0"), "harus memetakan ke kunci nomor urut");
+    assert.ok(nilai.includes("coba:1"));
+  });
+
+  it("pulau yang tidak ada di isi bawaan dilewati tanpa galat", () => {
+    const isi = K.susunDariTabel(
+      [{ slug: "pulau-baru", name: "Baru", urutan: 0, soon: false }],
+      [{ planet_slug: "pulau-baru", urutan: 0, tipe: "mcq", nama: "Misi 1", title: "B",
+        rounds: [{ q: "1+1?", a: "2", o: ["2", "3"] }], reward: 20, xp: 15 }]
+    );
+    const peta = K.petaKunciLama(isi);
+    assert.equal(peta["pulau-baru"], undefined, "pulau baru tidak punya kunci lama");
+  });
+
+  it("muatan tanpa misi menghasilkan peta kosong, bukan galat", () => {
+    assert.deepEqual(K.petaKunciLama({ missions: {} }), {});
+    assert.deepEqual(K.petaKunciLama(null), {});
+  });
+});

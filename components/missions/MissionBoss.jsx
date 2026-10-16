@@ -13,7 +13,7 @@ import { useBacakanSoal } from "@/lib/speech";
  * Misi 3 - Boss Battle melawan Gerhana Zahra.
  * - power 1 = bos sehat, 0 = kalah.
  */
-export default function MissionBoss({ mission, onDone }) {
+export default function MissionBoss({ mission, onDone, repeat = 0 }) {
   const [idx, setIdx] = useState(0);
   const [right, setRight] = useState(0);
   const [hp, setHp] = useState(1);
@@ -26,7 +26,12 @@ export default function MissionBoss({ mission, onDone }) {
   const reportedRef = useRef(false);
 
   // Opsi diacak supaya jawaban benar tidak selalu di posisi pertama.
-  const opts = useMemo(() => shuffleOptions(round, `${mission.id}-bos-${idx}`), [round, idx, mission.id]);
+  // `repeat` menaikkan benih tiap kali misi diulang (izin ulang sudah dibeli),
+  // sehingga urutan jawaban berbeda setiap kali meski soalnya tetap sama.
+  const opts = useMemo(
+    () => shuffleOptions(round, `${mission.id}-bos-${idx}-${repeat}`),
+    [round, idx, mission.id, repeat]
+  );
 
   const finish = useCallback(
     (finalRight) => {

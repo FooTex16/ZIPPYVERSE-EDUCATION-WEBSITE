@@ -36,6 +36,7 @@
 
 import { useEffect, useState } from "react";
 import { muatKontenAwan, terapkanTersimpan, jariKonten } from "@/lib/konten";
+import { muatPengaturanAwan } from "@/lib/adminConfig";
 
 export default function PemuatKonten({ children }) {
   const [versi, setVersi] = useState(0);
@@ -56,6 +57,17 @@ export default function PemuatKonten({ children }) {
         terapkanTersimpan();
       } catch {
         /* isi tersimpan gagal dipasang -> biarkan isi bawaan */
+      }
+
+      // --- 2a'. Tarik pengaturan global (harga kostum, batas energi, dll)
+      //          dari Supabase. Bila belum pernah diterbitkan, fungsi ini
+      //          diam-diam membiarkan nilai bawaan — tidak ada yang rusak.
+      //          Sengaja ditunggu supaya harga toko tampil benar sejak
+      //          render pertama, bukan berkedip dari bawaan ke nilai admin.
+      try {
+        await muatPengaturanAwan();
+      } catch {
+        /* tabel belum dibuat atau jaringan gagal -> tetap pakai nilai lokal */
       }
 
       // --- 2b. Tarik versi terbaru di latar belakang. Tidak pernah ditunggu:

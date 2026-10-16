@@ -36,6 +36,9 @@ const {
   koinPeti,
   petiTertunda,
   klaimPeti,
+  migrasiKunciKemajuan,
+  beliUlangMisi,
+  biayaUlangMisi,
 } = await import("../lib/store.js");
 
 // ---- Peralatan bantu ----
@@ -334,5 +337,117 @@ describe("Peti hadiah", () => {
   it("koin peti naik menurut tingkat, bukan datar", () => {
     assert.ok(koinPeti(2) > koinPeti(1), "tingkat 2 harus lebih besar");
     assert.ok(koinPeti(3) > koinPeti(2), "tingkat 3 harus lebih besar lagi");
+  });
+});
+
+// ============================================================
+// Migrasi kunci kemajuan (permintaan 1)
+// ============================================================
+describe("migrasiKunciKemajuan", () => {
+  it("memindahkan skor dari kunci lama ke kunci baru tanpa kehilangan data", () => {
+    simpan({
+      islands: {
+        angka: { done: true, missions: { a1: 3, a2: 2, a3: 1 } },
+      },
+    });
+
+    const peta = { angka: { a1: "angka:0", a2: "angka:1", a3: "angka:2" } };
+    const hasil = migrasiKunciKemajuan(peta);
+
+    assert.equal(hasil, true, "harus melaporkan ada yang berubah");
+    const s = baca();
+    assert.equal(s.islands.angka.missions["angka:0"], 3);
+    assert.equal(s.islands.angka.missions["angka:1"], 2);
+    assert.equal(s.islands.angka.missions["angka:2"], 1);
+    assert.equal(s.islands.angka.missions.a1, undefined, "kunci lama harus hilang");
+    assert.equal(s.islands.angka.done, true, "penanda tamat tidak boleh berubah");
+  });
+
+  it("kunci yang sudah tidak ada dibiarkan lewat tanpa galat", () => {
+    simpan({ islands: { kosong: { done: false, missions: {} } } });
+    const hasil = migrasiKunciKemajuan({ kosong: { x: "kosong:0" } });
+    assert.equal(hasil, false, "tidak ada yang berubah");
+  });
+
+  it("peta kosong tidak menyentuh simpanan apa pun", () => {
+    simpan({ islands: { angka: { done: true, missions: { a1: 3 } } }, coins: 50 });
+    const hasil = migrasiKunciKemajuan({});
+    assert.equal(hasil, false);
+    assert.equal(baca().islands.angka.missions.a1, 3, "skor tetap di tempatnya");
+  });
+
+  it("idempoten: dijalankan dua kali tidak merusak apa pun", () => {
+    simpan({ islands: { angka: { done: true, missions: { a1: 3 } } } });
+    const peta = { angka: { a1: "angka:0" } };
+    migrasiKunciKemajuan(peta);
+    const hasilKedua = migrasiKunciKemajuan(peta);
+    assert.equal(hasilKedua, false, "kedua kali tidak ada yang berpindah");
+    assert.equal(baca().islands.angka.missions["angka:0"], 3, "skor tidak berubah");
+  });
+
+  it("skor lebih tinggi di kunci baru tidak diturunkan oleh kunci lama", () => {
+    simpan({ islands: { angka: { done: true, missions: { a1: 2, "angka:0": 5 } } } });
+    migrasiKunciKemajuan({ angka: { a1: "angka:0" } });
+    assert.equal(baca().islands.angka.missions["angka:0"], 5, "skor tertinggi dipertahankan");
+    assert.equal(baca().islands.angka.missions.a1, undefined);
+  });
+});
+
+// ============================================================
+// Izin ulang misi (permintaan 2)
+// ============================================================
+describe("beliUlangMisi", () => {
+  it("membeli izin ulang mengurangi koin dan menandai pulau", () => {
+    simpan({ coins: 500, islands: { angka: { done: true, missions: { "angka:0": 3 } } } });
+    const r = beliUlangMisi("angka");
+    assert.equal(r.ok, true);
+    const s = baca();
+    assert.equal(s.coins, 500 - biayaUlangMisi(), "koin terpotong sesuai harga");
+    assert.equal(s.islands.angka.ulang, true, "penanda izin ulang terpasang");
+    assert.equal(s.islands.angka.done, true, "penanda tamat tidak hilang");
+  });
+
+  it("koin kurang tidak membeli apa-apa dan tidak mengurangi koin", () => {
+    simpan({ coins: 10, islands: { angka: { done: true, missions: {} } } });
+    const r = beliUlangMisi("angka");
+    assert.equal(r.ok, false);
+    assert.ok(r.galat.includes("belum cukup"), "pesan menjelaskan kekurangan");
+    assert.equal(baca().coins, 10, "koin tidak tersentuh");
+    assert.equal(baca().islands.angka.ulang, undefined, "izin tidak terpasang");
+  });
+
+  it("slug kosong ditolak dengan galat, bukan melempar", () => {
+    simpan({ coins: 999 });
+    const r = beliUlangMisi("");
+    assert.equal(r.ok, false);
+    assert.ok(r.galat);
+  });
+});
+
+describe("completeMission — izin ulang aktif", () => {
+  it("pulau tamat tanpa izin ulang tetap memberi 0 koin", () => {
+    simpan({ coins: 0, islands: { angka: { done: true, missions: { "angka:0": 3 } } } });
+    const r = completeMission("angka", "angka:1", 100, 20, 5);
+    assert.equal(r.coins, 0, "tanpa izin ulang tetap nol");
+  });
+
+  it("pulau tamat DENGAN izin ulang memberi 50% koin", () => {
+    simpan({
+      coins: 0,
+      islands: { angka: { done: true, ulang: true, missions: { "angka:0": 3 } } },
+    });
+    const r = completeMission("angka", "angka:1", 100, 20, 5);
+    assert.equal(r.coins, 50, "setengah dari 100");
+  });
+
+  it("izin ulang bisa dipakai berulang kali", () => {
+    simpan({
+      coins: 0,
+      islands: { angka: { done: true, ulang: true, missions: { "angka:0": 3 } } },
+    });
+    completeMission("angka", "angka:1", 100, 20, 5);
+    const kedua = completeMission("angka", "angka:1", 100, 20, 5);
+    assert.equal(kedua.coins, 50, "masih 50% pada pengulangan kedua");
+    assert.equal(baca().coins, 100, "total koin terakumulasi benar");
   });
 });

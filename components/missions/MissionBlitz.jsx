@@ -11,7 +11,7 @@ import { useBacakanSoal } from "@/lib/speech";
  * Misi 2 - Tantangan Kilat.
  * Jawab soal matematika sebanyak mungkin dalam waktu terbatas.
  */
-export default function MissionBlitz({ mission, onDone }) {
+export default function MissionBlitz({ mission, onDone, repeat = 0 }) {
   const duration = mission.duration || 30;
   const [idx, setIdx] = useState(0);
   const [score, setScore] = useState(0);
@@ -27,9 +27,11 @@ export default function MissionBlitz({ mission, onDone }) {
 
   // Opsi diacak memakai idx absolut, supaya saat soal yang sama muncul
   // kembali susunannya ikut berubah dan tidak bisa dihafal.
+  // `repeat` menaikkan benih tiap kali misi diulang (izin ulang sudah dibeli),
+  // sehingga urutan jawaban berbeda setiap kali meski soalnya tetap sama.
   const opts = useMemo(
-    () => shuffleOptions(round, `${mission.id}-kilat-${idx}`),
-    [round, idx, mission.id]
+    () => shuffleOptions(round, `${mission.id}-kilat-${idx}-${repeat}`),
+    [round, idx, mission.id, repeat]
   );
 
   // Timer

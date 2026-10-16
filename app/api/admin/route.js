@@ -231,6 +231,10 @@ const AKSI_TULIS = new Set([
   "pemain.simpan",
   // Terbitkan seluruh isi peta untuk seluruh akun anak.
   "konten.terapkan",
+  // Terbitkan pengaturan konten (harga kostum, batas energi, dll) untuk
+  // seluruh perangkat — supaya perubahan admin tidak terkurung di satu
+  // perangkat saja.
+  "pengaturan.simpan",
 ]);
 
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -896,6 +900,41 @@ export async function POST(req) {
         misi: barisMisi.length,
         dihapus: (sekarang || []).filter((r) => !hidup.has(r.slug)).length,
         pesan: `${barisPlanet.length} pulau dan ${barisMisi.length} misi diterbitkan untuk seluruh akun anak.`,
+      });
+    }
+
+    if (aksi === "pengaturan.simpan") {
+      const pengaturan = body?.pengaturan;
+      if (!pengaturan || typeof pengaturan !== "object" || Array.isArray(pengaturan)) {
+        return NextResponse.json(
+          { ok: false, galat: "Badan permintaan tidak memuat objek `pengaturan`." },
+          { status: 422 }
+        );
+      }
+
+      // Pemetaan dilakukan di server, bukan di peramban: klien hanya perlu
+      // mengirim objek yang SAMA dengan yang disimpan di localStorage, dan
+      // penerjemahan ke bentuk kolom jsonb terjadi di sini.
+      //
+      // `upsert` dengan `onConflict: "kunci"` membuat tabel selalu berisi
+      // tepi satu baris "utama" — tanpa perlu DELETE lalu INSERT yang bisa
+      // gagal di tengah jalan dan meninggalkan tabel kosong.
+      const { error } = await klien
+        .from("pengaturan")
+        .upsert(
+          { kunci: "utama", nilai: pengaturan, updated_at: new Date().toISOString() },
+          { onConflict: "kunci" }
+        );
+      if (error) {
+        return NextResponse.json(
+          { ok: false, galat: `Gagal menyimpan pengaturan: ${terjemahGalat(error)}` },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+        pesan: "Pengaturan diterbitkan untuk seluruh perangkat.",
       });
     }
 
